@@ -71,21 +71,11 @@
         reader.onload = function(evt) {
             try {
                 const data = new Uint8Array(evt.target.result);
-                const workbook = XLSX.read(data, { type: 'array', cellDates: true, cellNF: false, cellText: false });
-                const firstSheetName = workbook.SheetNames[0];
-                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: "" });
-                
-                console.log("Raw Data Sample:", jsonData[0]);
-                
-                if (!jsonData || jsonData.length === 0) {
-                    alert('파일에 데이터가 없습니다.');
-                    return;
-                }
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+                if (!jsonData || jsonData.length === 0) return alert('유효한 데이터가 없습니다.');
                 processData(jsonData);
-            } catch (err) {
-                console.error(err);
-                alert('파일 처리 중 오류가 발생했습니다: ' + err.message);
-            }
+            } catch (err) { alert('파일 읽기 오류: ' + err.message); }
         };
         reader.readAsArrayBuffer(file);
     }
@@ -97,13 +87,11 @@
     }
 
     function getVal(row, possibleNames) {
-        if (!row) return '';
         for (let name of possibleNames) {
             if (row[name] !== undefined && row[name] !== null) return row[name];
             const cleanTarget = name.replace(/\s+/g, '').toLowerCase();
             for (let key in row) {
-                const cleanKey = key.toString().replace(/\s+/g, '').toLowerCase();
-                if (cleanKey.includes(cleanTarget)) return row[key];
+                if (key.toString().replace(/\s+/g, '').toLowerCase().includes(cleanTarget)) return row[key];
             }
         }
         return '';
@@ -136,10 +124,16 @@
         if (!window.lastData) return alert('데이터가 없습니다.');
         const workbook = new ExcelJS.Workbook();
         
+        // 1. [매핑데이터] 컨트롤 패널 시트
         const mapSheet = workbook.addWorksheet('매핑데이터', { views: [{ showGridLines: false }] });
         mapSheet.getCell('B2').value = '⚙️ 상품 매핑 규칙 관리 컨트롤 패널';
         mapSheet.getCell('B2').font = { size: 16, bold: true, color: { argb: 'FF4E73DF' } };
-        const guide = ['1. 이 시트의 규칙에 따라 모든 날짜별 시트의 [변환결과(X)] 열이 실시간으로 결정됩니다.', '2. 아래 테이블의 [키워드]가 상품명에 포함되면 자동으로 [결과] 값으로 분류됩니다.', '3. 수식 반영이 느릴 경우 [Ctrl + Alt + F9]를 눌러 강제 재계산하세요.', '4. 미분류 데이터는 빨간색으로 표시됩니다.'];
+        const guide = [
+            '1. 이 시트의 규칙에 따라 모든 날짜별 시트의 [변환결과(X)] 열이 실시간으로 결정됩니다.',
+            '2. 아래 테이블의 [키워드]가 상품명에 포함되면 자동으로 [결과] 값으로 분류됩니다.',
+            '3. [참고] 수식이 바로 반영되지 않으면 엑셀에서 [Ctrl + Alt + F9]를 눌러 강제 재계산하세요.',
+            '4. 관리 범위는 5,000행까지 넉넉하게 설정되어 있습니다.'
+        ];
         guide.forEach((line, i) => { mapSheet.getCell(`B${4+i}`).value = line; mapSheet.getCell(`B${4+i}`).font = { size: 10, color: { argb: 'FF555555' } }; });
 
         const tHeaderRow = 10;
@@ -158,6 +152,7 @@
                 const cell = mapSheet.getCell(`${col}${tHeaderRow + i}`);
                 cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
                 cell.alignment = { horizontal: 'center' };
+                cell.font = { size: 9 };
             });
         }
         MASTER_MAPPING.forEach((m, i) => {
@@ -166,10 +161,11 @@
         });
         mapSheet.getColumn('B').width = 80; mapSheet.getColumn('C').width = 35; mapSheet.getColumn('D').width = 35;
 
+        // 공통 색상 및 팔레트
         const palette = ['FFE2EFDA', 'FFD9E1F2', 'FFFFF2CC', 'FFFCE4D6', 'FFE1D5E7', 'FFD5E8D4', 'FFF8CECC'];
         const resColors = { '미분류': { bg: 'FFFF0000', fg: 'FFFFFFFF' } };
         const uniqueRes = [...new Set(MASTER_MAPPING.map(m => m.result)), '미분류'];
-        uniqueRes.forEach((res, i) => { if (!resultColors[res]) resultColors[res] = { bg: palette[i % palette.length], fg: 'FF333333' }; });
+        uniqueRes.forEach((res, i) => { if (!resColors[res]) resColors[res] = { bg: palette[i % palette.length], fg: 'FF333333' }; });
 
         const rawFiltered = window.lastData.filter(row => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(row, ['MID']).toString()));
         const grouped = {};
@@ -182,9 +178,13 @@
         });
 
         for (const [date, rows] of Object.entries(grouped).sort()) {
-            const sheet = workbook.addWorksheet(date, { views: [{ zoomScale: 90 }], pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1 } });
+            const sheet = workbook.addWorksheet(date, { 
+                views: [{ zoomScale: 90 }],
+                pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1 }
+            });
             sheet.properties.tabColor = { argb: palette[Object.keys(grouped).indexOf(date) % palette.length] };
 
+            // 고정 열 너비
             sheet.columns = [
                 { width: 6 }, { width: 15 }, { width: 12 }, { width: 12, hidden: true }, { width: 12, hidden: true },
                 { width: 12, hidden: true }, { width: 12, hidden: true }, { width: 12, hidden: true }, { width: 13 },
@@ -196,26 +196,26 @@
 
             const mmdd = date.replace('월', '.').replace('일', '');
             sheet.getCell('A1').value = `■ 정산일 기준_${mmdd}`;
-            sheet.getCell('A1').font = { size: 11, bold: true };
+            sheet.getCell('A1').font = { size: 11, bold: true, name: '맑은 고딕' };
 
             const headerRow = sheet.getRow(3);
             headerRow.values = ['NO.', '결제 서비스명', '정산일', '승인일', '매입요청일', '취소일', '상 호', 'MID', '거래금액', '결제수수료', '에스크로수수료', '인증수수료', 'VAT', '정산금액', '카드/은행', '승인번호', '주문번호', '구매자', '상품명', '거래구분', 'TID', '상태', '원거래 TID', '변환결과(X)', '정산금액(Y)', '수수료+VAT(Z)'];
             headerRow.eachCell(c => {
                 c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
-                c.font = { bold: true, size: 9 };
+                c.font = { bold: true, size: 9, name: '맑은 고딕' };
                 c.alignment = { vertical: 'middle', horizontal: 'center' };
                 c.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
             });
 
-            const catHit = {};
+            const catHit = {}; // 실적 있는 카테고리 체크
             rows.forEach((r, i) => {
                 const rIdx = i + 4;
                 const row = sheet.getRow(rIdx);
-                const amt = parseMoney(getVal(r, ['거래금액']));
+                const prodName = getVal(r, ['상품명']);
+                const amt = parseMoney(getVal(r, ['거래금액', '결제금액']));
                 const feeJ = parseMoney(getVal(r, ['결제수수료', '수수료']));
                 const vatM = parseMoney(getVal(r, ['VAT', '부가세']));
                 const setN = parseMoney(getVal(r, ['정산금액', '지급금액']));
-                const prod = getVal(r, ['상품명']);
 
                 row.getCell(1).value = i + 1;
                 row.getCell(2).value = getVal(r, ['결제 서비스명']);
@@ -226,14 +226,16 @@
                 row.getCell(14).value = setN;
                 row.getCell(15).value = getVal(r, ['카드/은행', '카드사']);
                 row.getCell(18).value = getVal(r, ['구매자']);
-                row.getCell(19).value = prod;
+                row.getCell(19).value = prodName;
                 
-                row.getCell(24).value = { formula: `IFERROR(LOOKUP(1, 0/(SEARCH('매핑데이터'!$C$11:$C$1000, S${rIdx})*('매핑데이터'!$C$11:$C$1000<>"")), '매핑데이터'!$D$11:$D$1000), "미분류")` };
+                // 수식 입력
+                row.getCell(24).value = { formula: `IFERROR(LOOKUP(1, 0/(SEARCH('매핑데이터'!$C$11:$C$5000, S${rIdx})*('매핑데이터'!$C$11:$C$5000<>"")), '매핑데이터'!$D$11:$D$5000), "미분류")` };
                 row.getCell(25).value = { formula: `N${rIdx}` };
                 row.getCell(26).value = { formula: `J${rIdx}+M${rIdx}` };
 
+                // 실적 판별 (숨기기용)
                 let matched = '미분류';
-                for(let m of MASTER_MAPPING) { if(prod.includes(m.keyword)) matched = m.result; }
+                for(let m of MASTER_MAPPING) { if(prodName.includes(m.keyword)) matched = m.result; }
                 catHit[matched] = true;
 
                 row.eachCell({ includeEmpty: false }, (cell, col) => {
@@ -247,28 +249,29 @@
             });
 
             // X열 조건부 서식
-            sheet.addConditionalFormatting({ ref: `X4:X${rows.length + 3}`, rules: Object.entries(resColors).map(([res, s]) => ({
+            const rules = Object.entries(resColors).map(([res, s]) => ({
                 type: 'cellIs', operator: 'equal', formulae: [`"${res}"`],
                 style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: s.bg } }, font: { color: { argb: s.fg }, bold: (res==='미분류'), size: 9 } }
-            })) });
+            }));
+            sheet.addConditionalFormatting({ ref: `X4:X${rows.length + 3}`, rules });
 
             // 합계 행
             const tIdx = rows.length + 5;
             sheet.mergeCells(tIdx, 1, tIdx, 3);
-            sheet.getCell(`A${tIdx}`).value = '합계';
+            const tRow = sheet.getRow(tIdx);
+            tRow.getCell(1).value = '합계';
             [9, 10, 13, 25, 26].forEach(c => {
                 const L = {9:'I', 10:'J', 13:'M', 25:'Y', 26:'Z'}[c];
-                const cell = sheet.getCell(`${L}${tIdx}`);
+                const cell = tRow.getCell(c);
                 cell.value = { formula: `SUM(${L}4:${L}${rows.length + 3})` };
-                cell.numFmt = '#,##0';
-                cell.font = { bold: true, size: 9 };
+                cell.numFmt = '#,##0'; cell.font = { bold: true, size: 9 };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: c===25 ? 'FFFFF2CC' : (c===26 ? 'FFFCE4D6' : 'FFF2F2F2') } };
                 cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
                 cell.alignment = { horizontal: 'right' };
             });
             for(let c=1; c<=26; c++) if(![9,10,13,25,26].includes(c)) { 
-                sheet.getCell(tIdx, c).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; 
-                sheet.getCell(tIdx, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+                tRow.getCell(c).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; 
+                tRow.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
             }
 
             // 하단 대시보드
@@ -314,35 +317,21 @@
         const buf = await workbook.xlsx.writeBuffer();
         const link = document.createElement('a');
         link.href = URL.createObjectURL(new Blob([buf]));
-        link.download = `나이스페이_가공완료_${new Date().toISOString().slice(0,10)}.xlsx`;
+        link.download = `나이스페이_통합정산_${new Date().toISOString().slice(0,10)}.xlsx`;
         link.click();
     }
 
     function processData(data) {
-        try {
-            const filtered = data.filter(r => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(r, ['MID']).toString()));
-            window.lastData = data;
-            
-            if (filtered.length === 0) {
-                alert('해당하는 MID(shinanrs1m, 4m, 5m) 데이터가 없습니다. 원본 파일을 확인해 주세요.');
-                return;
-            }
-
-            let totalGross = 0, totalNet = 0, totalFee = 0;
-            const daily = {}, prod = {};
-            filtered.forEach(r => {
-                const amt = parseMoney(getVal(r, ['거래금액', '결제금액']));
-                const set = parseMoney(getVal(r, ['정산금액', '지급금액']));
-                const f = parseMoney(getVal(r, ['결제수수료', '수수료']));
-                totalGross += amt; totalNet += set; totalFee += f;
-            });
-
-            document.getElementById('statsGrid').innerHTML = `<div class="stat-card"><h3>총 거래 금액</h3><div class="value">${totalGross.toLocaleString()}원</div></div><div class="stat-card" style="border-left-color: var(--success)"><h3>순 정산 예정액</h3><div class="value">${totalNet.toLocaleString()}원</div></div><div class="stat-card" style="border-left-color: var(--info)"><h3>총 결제 건수</h3><div class="value">${filtered.length.toLocaleString()}건</div></div><div class="stat-card" style="border-left-color: var(--warning)"><h3>총 수수료</h3><div class="value">${totalFee.toLocaleString()}원</div></div>`;
-            document.getElementById('dashboardContent').classList.remove('hidden');
-        } catch (e) {
-            console.error(e);
-            alert("데이터 처리 중 오류 발생: " + e.message);
-        }
+        const filtered = data.filter(r => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(r, ['MID']).toString()));
+        window.lastData = data;
+        let totalGross = 0, totalNet = 0, totalFee = 0;
+        filtered.forEach(r => {
+            totalGross += parseMoney(getVal(r, ['거래금액', '결제금액']));
+            totalNet += parseMoney(getVal(r, ['정산금액', '지급금액']));
+            totalFee += parseMoney(getVal(r, ['결제수수료', '수수료']));
+        });
+        document.getElementById('statsGrid').innerHTML = `<div class="stat-card"><h3>총 거래 금액</h3><div class="value">${totalGross.toLocaleString()}원</div></div><div class="stat-card" style="border-left-color: var(--success)"><h3>순 정산 예정액</h3><div class="value">${totalNet.toLocaleString()}원</div></div><div class="stat-card" style="border-left-color: var(--info)"><h3>총 결제 건수</h3><div class="value">${filtered.length.toLocaleString()}건</div></div><div class="stat-card" style="border-left-color: var(--warning)"><h3>총 수수료</h3><div class="value">${totalFee.toLocaleString()}원</div></div>`;
+        document.getElementById('dashboardContent').classList.remove('hidden');
     }
 </script>
 </body>
