@@ -98,48 +98,56 @@
     }
 
     const MASTER_MAPPING = [
-        { keyword: '밀리터리', result: '밀리터리', group: '기타' },
-        { keyword: '시즌권', result: '스키시즌권', group: '스노우파크' },
-        { keyword: '원데이락커', result: '장비보관소', group: '스노우파크' },
-        { keyword: '리프트', result: '리프트', group: '스노우파크' },
-        { keyword: '강습', result: '강습pkg', group: '스노우파크' },
-        { keyword: '30주년', result: '30pkg', group: '스노우파크' },
-        { keyword: '눈썰매', result: '눈썰매', group: '스노우파크' },
-        { keyword: '곤돌라', result: '관광곤돌라', group: '기타' },
-        { keyword: '베이직', result: '베이직', group: '기타' },
-        { keyword: '룸온리', result: '룸온리', group: '리조트' },
-        { keyword: '설렘', result: '설렘', group: '리조트' },
-        { keyword: '힐링', result: '힐링', group: '리조트' },
-        { keyword: '스키렌탈', result: '장비렌탈', group: '스노우파크' },
-        { keyword: '사우나이용권', result: '사우나', group: '워터플래닛' },
-        { keyword: '스마트예약 종일권', result: '워터플래닛입장권', group: '워터플래닛' },
-        { keyword: '카바나', result: '카바나', group: '워터플래닛' },
-        { keyword: '썬베드', result: '선베드', group: '워터플래닛' },
-        { keyword: 'wp시즌패스', result: '워터파크시즌패스', group: '워터플래닛' },
-        { keyword: '아레나', result: '아레나', group: '기타' },
-        { keyword: '미분류', result: '미분류', group: '기타' }
+        { group: '기타', keyword: '밀리터리', result: '밀리터리' },
+        { group: '스노우파크', keyword: '시즌권', result: '스키시즌권' },
+        { group: '스노우파크', keyword: '원데이락커', result: '장비보관소' },
+        { group: '스노우파크', keyword: '리프트', result: '리프트' },
+        { group: '스노우파크', keyword: '강습', result: '강습pkg' },
+        { group: '스노우파크', keyword: '30주년', result: '30pkg' },
+        { group: '스노우파크', keyword: '눈썰매', result: '눈썰매' },
+        { group: '기타', keyword: '곤돌라', result: '관광곤돌라' },
+        { group: '기타', keyword: '베이직', result: '베이직' },
+        { group: '기타', keyword: '수go햇雪', result: '수고햇설' },
+        { group: '리조트', keyword: '룸온리', result: '룸온리' },
+        { group: '기타', keyword: '짜릿', result: '짜릿' },
+        { group: '스노우파크', keyword: '리프트권+장비렌탈', result: '얼리리장4' },
+        { group: '리조트', keyword: '설렘', result: '설렘' },
+        { group: '리조트', keyword: '힐링', result: '힐링' },
+        { group: '리조트', keyword: '포근', result: '포근' },
+        { group: '스노우파크', keyword: '스키렌탈', result: '장비렌탈' },
+        { group: '스노우파크', keyword: '의류렌탈', result: '의류렌탈' },
+        { group: '워터플래닛', keyword: '사우나이용권', result: '사우나' },
+        { group: '워터플래닛', keyword: '스마트예약 종일권', result: '워터플래닛입장권' },
+        { group: '워터플래닛', keyword: '카바나', result: '카바나' },
+        { group: '워터플래닛', keyword: '썬베드', result: '선베드' },
+        { group: '워터플래닛', keyword: 'wp시즌패스', result: '워터파크시즌패스' },
+        { group: '스노우파크', keyword: '아레나파크', result: '아레나' },
+        { group: '리조트', keyword: '컴플릿', result: '컴플릿' },
+        { group: '리조트', keyword: '임직원', result: '룸온리' },
+        { group: '기타', keyword: '미분류', result: '미분류' }
     ];
 
     async function exportToProcessedFormat() {
         if (!window.lastData) return alert('데이터가 없습니다.');
         const workbook = new ExcelJS.Workbook();
         
-        // 1. [매핑데이터] 컨트롤 패널 시트
+        // 1. [매핑데이터] 시트 개편 (B:대분류, C:키워드, D:소분류)
         const mapSheet = workbook.addWorksheet('매핑데이터', { views: [{ showGridLines: false }] });
         mapSheet.getCell('B2').value = '⚙️ 상품 매핑 규칙 관리 컨트롤 패널';
         mapSheet.getCell('B2').font = { size: 16, bold: true, color: { argb: 'FF4E73DF' } };
         const guide = [
             '1. 이 시트의 규칙에 따라 모든 날짜별 시트의 [변환결과(X)] 열이 실시간으로 결정됩니다.',
             '2. 아래 테이블의 [키워드]가 상품명에 포함되면 자동으로 [결과] 값으로 분류됩니다.',
-            '3. [참고] 수식이 바로 반영되지 않으면 엑셀에서 [Ctrl + Alt + F9]를 눌러 강제 재계산하세요.',
-            '4. 관리 범위는 5,000행까지 넉넉하게 설정되어 있습니다.'
+            '3. [대분류]를 수정하면 하단 요약표의 그룹화도 함께 변경됩니다.',
+            '4. 수식 반영이 느릴 경우 [Ctrl + Alt + F9]를 눌러 강제 재계산하세요.'
         ];
         guide.forEach((line, i) => { mapSheet.getCell(`B${4+i}`).value = line; mapSheet.getCell(`B${4+i}`).font = { size: 10, color: { argb: 'FF555555' } }; });
 
         const tHeaderRow = 10;
+        mapSheet.getCell(`B${tHeaderRow}`).value = '대분류';
         mapSheet.getCell(`C${tHeaderRow}`).value = '검색 키워드';
         mapSheet.getCell(`D${tHeaderRow}`).value = '최종 분류 결과';
-        ['C', 'D'].forEach(col => {
+        ['B', 'C', 'D'].forEach(col => {
             const cell = mapSheet.getCell(`${col}${tHeaderRow}`);
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4E73DF' } };
             cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -148,7 +156,7 @@
         });
 
         for (let i = 1; i <= 1000; i++) {
-            ['C', 'D'].forEach(col => {
+            ['B', 'C', 'D'].forEach(col => {
                 const cell = mapSheet.getCell(`${col}${tHeaderRow + i}`);
                 cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
                 cell.alignment = { horizontal: 'center' };
@@ -156,12 +164,14 @@
             });
         }
         MASTER_MAPPING.forEach((m, i) => {
-            mapSheet.getCell(`C${tHeaderRow+1+i}`).value = m.keyword;
-            mapSheet.getCell(`D${tHeaderRow+1+i}`).value = m.result;
+            const rIdx = tHeaderRow + 1 + i;
+            mapSheet.getCell(`B${rIdx}`).value = m.group;
+            mapSheet.getCell(`C${rIdx}`).value = m.keyword;
+            mapSheet.getCell(`D${rIdx}`).value = m.result;
         });
-        mapSheet.getColumn('B').width = 80; mapSheet.getColumn('C').width = 35; mapSheet.getColumn('D').width = 35;
+        mapSheet.getColumn('B').width = 20; mapSheet.getColumn('C').width = 35; mapSheet.getColumn('D').width = 35;
 
-        // 공통 색상 및 팔레트
+        // 공통 색상
         const palette = ['FFE2EFDA', 'FFD9E1F2', 'FFFFF2CC', 'FFFCE4D6', 'FFE1D5E7', 'FFD5E8D4', 'FFF8CECC'];
         const resColors = { '미분류': { bg: 'FFFF0000', fg: 'FFFFFFFF' } };
         const uniqueRes = [...new Set(MASTER_MAPPING.map(m => m.result)), '미분류'];
@@ -178,13 +188,9 @@
         });
 
         for (const [date, rows] of Object.entries(grouped).sort()) {
-            const sheet = workbook.addWorksheet(date, { 
-                views: [{ zoomScale: 90 }],
-                pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1 }
-            });
+            const sheet = workbook.addWorksheet(date, { views: [{ zoomScale: 90 }], pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1 } });
             sheet.properties.tabColor = { argb: palette[Object.keys(grouped).indexOf(date) % palette.length] };
 
-            // 고정 열 너비
             sheet.columns = [
                 { width: 6 }, { width: 15 }, { width: 12 }, { width: 12, hidden: true }, { width: 12, hidden: true },
                 { width: 12, hidden: true }, { width: 12, hidden: true }, { width: 12, hidden: true }, { width: 13 },
@@ -196,46 +202,41 @@
 
             const mmdd = date.replace('월', '.').replace('일', '');
             sheet.getCell('A1').value = `■ 정산일 기준_${mmdd}`;
-            sheet.getCell('A1').font = { size: 11, bold: true, name: '맑은 고딕' };
+            sheet.getCell('A1').font = { size: 11, bold: true };
 
             const headerRow = sheet.getRow(3);
             headerRow.values = ['NO.', '결제 서비스명', '정산일', '승인일', '매입요청일', '취소일', '상 호', 'MID', '거래금액', '결제수수료', '에스크로수수료', '인증수수료', 'VAT', '정산금액', '카드/은행', '승인번호', '주문번호', '구매자', '상품명', '거래구분', 'TID', '상태', '원거래 TID', '변환결과(X)', '정산금액(Y)', '수수료+VAT(Z)'];
             headerRow.eachCell(c => {
                 c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
-                c.font = { bold: true, size: 9, name: '맑은 고딕' };
+                c.font = { bold: true, size: 9 };
                 c.alignment = { vertical: 'middle', horizontal: 'center' };
                 c.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
             });
 
-            const catHit = {}; // 실적 있는 카테고리 체크
+            const catHit = {}; 
             rows.forEach((r, i) => {
                 const rIdx = i + 4;
                 const row = sheet.getRow(rIdx);
-                const prodName = getVal(r, ['상품명']);
+                const pName = getVal(r, ['상품명']);
                 const amt = parseMoney(getVal(r, ['거래금액', '결제금액']));
-                const feeJ = parseMoney(getVal(r, ['결제수수료', '수수료']));
-                const vatM = parseMoney(getVal(r, ['VAT', '부가세']));
-                const setN = parseMoney(getVal(r, ['정산금액', '지급금액']));
 
                 row.getCell(1).value = i + 1;
                 row.getCell(2).value = getVal(r, ['결제 서비스명']);
                 row.getCell(3).value = getVal(r, ['정산일']);
                 row.getCell(9).value = amt;
-                row.getCell(10).value = feeJ;
-                row.getCell(13).value = vatM;
-                row.getCell(14).value = setN;
+                row.getCell(10).value = parseMoney(getVal(r, ['결제수수료', '수수료']));
+                row.getCell(13).value = parseMoney(getVal(r, ['VAT', '부가세']));
+                row.getCell(14).value = parseMoney(getVal(r, ['정산금액', '지급금액']));
                 row.getCell(15).value = getVal(r, ['카드/은행', '카드사']);
                 row.getCell(18).value = getVal(r, ['구매자']);
-                row.getCell(19).value = prodName;
+                row.getCell(19).value = pName;
                 
-                // 수식 입력
                 row.getCell(24).value = { formula: `IFERROR(LOOKUP(1, 0/(SEARCH('매핑데이터'!$C$11:$C$5000, S${rIdx})*('매핑데이터'!$C$11:$C$5000<>"")), '매핑데이터'!$D$11:$D$5000), "미분류")` };
                 row.getCell(25).value = { formula: `N${rIdx}` };
                 row.getCell(26).value = { formula: `J${rIdx}+M${rIdx}` };
 
-                // 실적 판별 (숨기기용)
                 let matched = '미분류';
-                for(let m of MASTER_MAPPING) { if(prodName.includes(m.keyword)) matched = m.result; }
+                for(let m of MASTER_MAPPING) { if(pName.includes(m.keyword)) matched = m.result; }
                 catHit[matched] = true;
 
                 row.eachCell({ includeEmpty: false }, (cell, col) => {
@@ -249,20 +250,18 @@
             });
 
             // X열 조건부 서식
-            const rules = Object.entries(resColors).map(([res, s]) => ({
+            sheet.addConditionalFormatting({ ref: `X4:X${rows.length + 3}`, rules: Object.entries(resColors).map(([res, s]) => ({
                 type: 'cellIs', operator: 'equal', formulae: [`"${res}"`],
                 style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: s.bg } }, font: { color: { argb: s.fg }, bold: (res==='미분류'), size: 9 } }
-            }));
-            sheet.addConditionalFormatting({ ref: `X4:X${rows.length + 3}`, rules });
+            })) });
 
             // 합계 행
             const tIdx = rows.length + 5;
             sheet.mergeCells(tIdx, 1, tIdx, 3);
-            const tRow = sheet.getRow(tIdx);
-            tRow.getCell(1).value = '합계';
+            sheet.getCell(`A${tIdx}`).value = '합계';
             [9, 10, 13, 25, 26].forEach(c => {
                 const L = {9:'I', 10:'J', 13:'M', 25:'Y', 26:'Z'}[c];
-                const cell = tRow.getCell(c);
+                const cell = sheet.getCell(`${L}${tIdx}`);
                 cell.value = { formula: `SUM(${L}4:${L}${rows.length + 3})` };
                 cell.numFmt = '#,##0'; cell.font = { bold: true, size: 9 };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: c===25 ? 'FFFFF2CC' : (c===26 ? 'FFFCE4D6' : 'FFF2F2F2') } };
@@ -270,14 +269,14 @@
                 cell.alignment = { horizontal: 'right' };
             });
             for(let c=1; c<=26; c++) if(![9,10,13,25,26].includes(c)) { 
-                tRow.getCell(c).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; 
-                tRow.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+                sheet.getCell(tIdx, c).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; 
+                sheet.getCell(tIdx, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
             }
 
-            // 하단 대시보드
+            // --- [대시보드 요약표: 대분류 + 소계 + 총계] ---
             const dbS = tIdx + 2;
-            const merges = [[2,3], [4,5], [6,9], [10,13], [14,17], [18,21], [22,25]];
-            const labels = ['구분', '건수', '거래금액', '결제수수료', 'VAT', '정산금액', '수수료+VAT'];
+            const merges = [[2,2], [3,3], [4,5], [6,9], [10,13], [14,17], [18,21], [22,25]];
+            const labels = ['대분류', '소분류', '건수', '거래금액', '결제수수료', 'VAT', '정산금액', '수수료+VAT'];
             merges.forEach((m, i) => {
                 sheet.mergeCells(dbS, m[0], dbS, m[1]);
                 const c = sheet.getCell(dbS, m[0]);
@@ -289,25 +288,60 @@
             });
 
             let curR = dbS + 1;
+            const sectionTotalRows = [];
             ['리조트', '스노우파크', '워터플래닛', '기타'].forEach(grp => {
                 const items = MASTER_MAPPING.filter(m => m.group === grp && catHit[m.result]);
+                if (items.length === 0) return;
+                
+                const groupStartRow = curR;
                 items.forEach((item, idx) => {
-                    sheet.mergeCells(curR, 2, curR, 2); sheet.mergeCells(curR, 3, curR, 3);
-                    sheet.getCell(curR, 2).value = (idx === 0) ? grp : '';
-                    sheet.getCell(curR, 3).value = item.result;
+                    const row = sheet.getRow(curR);
+                    row.getCell(2).value = (idx === 0) ? grp : '';
+                    row.getCell(3).value = item.result;
                     const xAbs = `$X$4:$X$${rows.length + 3}`;
-                    merges.slice(1).forEach((m, j) => {
+                    merges.slice(2).forEach((m, j) => {
                         sheet.mergeCells(curR, m[0], curR, m[1]);
                         const cell = sheet.getCell(curR, m[0]);
-                        const L = ['I', 'J', 'M', 'Y', 'Z'][j-1];
-                        if(j===1) cell.value = { formula: `COUNTIF(${xAbs}, C${curR})` };
+                        const L = ['I', 'J', 'M', 'Y', 'Z'][j];
+                        if(j===0) cell.value = { formula: `COUNTIF(${xAbs}, C${curR})` };
                         else cell.value = { formula: `SUMIF(${xAbs}, C${curR}, $${L}$4:$${L}$${rows.length + 3})` };
                         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-                        cell.numFmt = '#,##0'; cell.alignment = { horizontal: j===1 ? 'center' : 'right' };
+                        cell.numFmt = '#,##0'; cell.alignment = { horizontal: j===0 ? 'center' : 'right' };
                         cell.font = { size: 9, name: '맑은 고딕' };
                     });
                     curR++;
                 });
+
+                // 대분류 소계 행
+                sheet.mergeCells(curR, 2, curR, 3);
+                sheet.getCell(curR, 2).value = `${grp} 소계`;
+                merges.slice(2).forEach((m, j) => {
+                    sheet.mergeCells(curR, m[0], curR, m[1]);
+                    const cell = sheet.getCell(curR, m[0]);
+                    const L = ['D', 'F', 'J', 'N', 'R', 'V'][j]; // 병합 시작 열 문자
+                    cell.value = { formula: `SUM(${L}${groupStartRow}:${L}${curR-1})` };
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+                    cell.font = { bold: true, size: 9 };
+                    cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+                    cell.numFmt = '#,##0'; cell.alignment = { horizontal: j===0 ? 'center' : 'right' };
+                });
+                sectionTotalRows.push(curR);
+                curR++;
+            });
+
+            // 전체 총계 행
+            sheet.mergeCells(curR, 2, curR, 3);
+            sheet.getCell(curR, 2).value = `총 합계`;
+            merges.slice(2).forEach((m, j) => {
+                sheet.mergeCells(curR, m[0], curR, m[1]);
+                const cell = sheet.getCell(curR, m[0]);
+                const L = ['D', 'F', 'J', 'N', 'R', 'V'][j];
+                const sumRange = sectionTotalRows.map(r => `${L}${r}`).join(',');
+                cell.value = { formula: `SUM(${sumRange})` };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
+                cell.font = { bold: true, size: 10 };
+                cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+                cell.numFmt = '#,##0'; cell.alignment = { horizontal: j===0 ? 'center' : 'right' };
             });
 
             sheet.autoFilter = 'A3:Z3';
@@ -317,7 +351,7 @@
         const buf = await workbook.xlsx.writeBuffer();
         const link = document.createElement('a');
         link.href = URL.createObjectURL(new Blob([buf]));
-        link.download = `나이스페이_통합정산_${new Date().toISOString().slice(0,10)}.xlsx`;
+        link.download = `나이스페이_통합가공_${new Date().toISOString().slice(0,10)}.xlsx`;
         link.click();
     }
 
