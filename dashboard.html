@@ -65,7 +65,30 @@
                 <button class="btn-small" onclick="resetMapping()" style="color: var(--danger);">🗑️ 초기화</button>
             </div>
         </div>
+
+        <!-- 섹션 1: 분류 대기 항목 -->
+        <div id="unclassifiedSection" class="hidden" style="margin-bottom: 25px; border: 2px solid var(--danger); border-radius: 8px; padding: 15px; background: #fffcfc;">
+            <h3 style="margin: 0 0 10px 0; font-size: 1rem; color: var(--danger); display: flex; align-items: center;">
+                <span style="margin-right: 8px;">⚠️</span> 분류가 필요한 신규 상품 (<span id="unclassifiedCount">0</span>건)
+            </h3>
+            <div class="mapping-table-wrapper" style="max-height: 200px; border-color: #ffcccc;">
+                <table class="mapping-table">
+                    <thead>
+                        <tr style="background: #fff5f5;">
+                            <th>신규 감지된 상품명</th>
+                            <th>분류 지정 (입력 시 이동)</th>
+                            <th style="width: 50px; text-align: center;">삭제</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unclassifiedTableBody"></tbody>
+                </table>
+            </div>
+        </div>
         
+        <!-- 섹션 2: 마스터 매핑 목록 -->
+        <h3 style="margin: 0 0 10px 0; font-size: 1rem; color: var(--primary); display: flex; align-items: center;">
+            <span style="margin-right: 8px;">✅</span> 등록된 마스터 매핑 목록
+        </h3>
         <div class="mapping-table-wrapper">
             <table class="mapping-table">
                 <thead>
@@ -129,44 +152,60 @@
     }
 
     function renderMappingTable() {
-        const tbody = document.getElementById('mappingTableBody');
-        
-        // 5글자 기준 그룹화 로직
-        const groups = {};
+        const unclassifiedTbody = document.getElementById('unclassifiedTableBody');
+        const masterTbody = document.getElementById('mappingTableBody');
+        const unclassifiedSection = document.getElementById('unclassifiedSection');
+        const unclassifiedCountSpan = document.getElementById('unclassifiedCount');
+
+        const unclassifiedItems = [];
+        const classifiedItems = [];
+
         MASTER_MAPPING.forEach((m, index) => {
-            const prefix = m.keyword.substring(0, 5);
-            if (!groups[prefix]) groups[prefix] = [];
-            groups[prefix].push({ ...m, originalIndex: index });
+            const item = { ...m, originalIndex: index };
+            if (m.result === '미분류') unclassifiedItems.push(item);
+            else classifiedItems.push(item);
         });
 
-        let html = '';
+        // 1. 미분류 섹션 렌더링
+        if (unclassifiedItems.length > 0) {
+            unclassifiedSection.classList.remove('hidden');
+            unclassifiedCountSpan.innerText = unclassifiedItems.length;
+            unclassifiedTbody.innerHTML = unclassifiedItems.map(it => `
+                <tr class="unclassified">
+                    <td>${it.keyword}</td>
+                    <td><input type="text" class="input-inline" value="" onchange="updateMappingResult(${it.originalIndex}, this.value)" placeholder="분류 결과 입력 시 등록됨..."></td>
+                    <td style="text-align: center;"><button onclick="deleteMappingRule(${it.originalIndex})" style="color:red; background:none; border:none; cursor:pointer;">&times;</button></td>
+                </tr>
+            `).join('');
+        } else {
+            unclassifiedSection.classList.add('hidden');
+        }
+
+        // 2. 마스터 매핑 섹션 렌더링 (기존 5글자 그룹화 로직 유지)
+        const groups = {};
+        classifiedItems.forEach(it => {
+            const prefix = it.keyword.substring(0, 5);
+            if (!groups[prefix]) groups[prefix] = [];
+            groups[prefix].push(it);
+        });
+
+        let masterHtml = '';
         Object.keys(groups).sort().forEach(prefix => {
             const items = groups[prefix];
             if (items.length > 1) {
-                // 그룹화된 행 (2개 이상일 때)
                 const allSameResult = items.every(it => it.result === items[0].result);
                 const commonResult = allSameResult ? items[0].result : '';
-                
-                html += `
+                masterHtml += `
                     <tr style="background-color: #f0f7ff; font-weight: bold; border-left: 4px solid var(--primary);">
                         <td colspan="1">📦 [그룹] "${prefix}..." 외 ${items.length}건</td>
-                        <td>
-                            <input type="text" class="input-inline" value="${commonResult}" 
-                                   onchange="updateGroupResult('${prefix}', this.value)" 
-                                   placeholder="그룹 일괄 분류 수정...">
-                        </td>
-                        <td style="text-align: center;">
-                            <button onclick="toggleGroup('${prefix}')" style="background:none; border:none; cursor:pointer;">📂</button>
-                        </td>
+                        <td><input type="text" class="input-inline" value="${commonResult}" onchange="updateGroupResult('${prefix}', this.value)" placeholder="그룹 일괄 분류 수정..."></td>
+                        <td style="text-align: center;"><button onclick="toggleGroup('${prefix}')" style="background:none; border:none; cursor:pointer;">📂</button></td>
                     </tr>
                 `;
-                
-                // 그룹 내 개별 항목들
-                const isExpanded = localStorage.getItem(`group_expand_${prefix}`) !== 'false';
-                if (isExpanded) {
+                if (localStorage.getItem(`group_expand_${prefix}`) !== 'false') {
                     items.forEach(it => {
-                        html += `
-                            <tr class="${it.result === '미분류' ? 'unclassified' : ''}" style="font-size: 0.85rem;">
+                        masterHtml += `
+                            <tr style="font-size: 0.85rem;">
                                 <td style="padding-left: 30px;">└ ${it.keyword}</td>
                                 <td><input type="text" class="input-inline" value="${it.result}" onchange="updateMappingResult(${it.originalIndex}, this.value)"></td>
                                 <td style="text-align: center;"><button onclick="deleteMappingRule(${it.originalIndex})" style="color:red; background:none; border:none; cursor:pointer;">&times;</button></td>
@@ -175,10 +214,9 @@
                     });
                 }
             } else {
-                // 단일 항목
                 const it = items[0];
-                html += `
-                    <tr class="${it.result === '미분류' ? 'unclassified' : ''}">
+                masterHtml += `
+                    <tr>
                         <td>${it.keyword}</td>
                         <td><input type="text" class="input-inline" value="${it.result}" onchange="updateMappingResult(${it.originalIndex}, this.value)"></td>
                         <td style="text-align: center;"><button onclick="deleteMappingRule(${it.originalIndex})" style="color:red; background:none; border:none; cursor:pointer;">&times;</button></td>
@@ -186,8 +224,7 @@
                 `;
             }
         });
-        
-        tbody.innerHTML = html || '<tr><td colspan="3" style="text-align:center; padding:20px;">데이터가 없습니다.</td></tr>';
+        masterTbody.innerHTML = masterHtml || '<tr><td colspan="3" style="text-align:center; padding:20px;">등록된 마스터 매핑이 없습니다.</td></tr>';
     }
 
     function toggleGroup(prefix) {
