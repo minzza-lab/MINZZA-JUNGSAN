@@ -192,9 +192,11 @@
         const palette = ['FFE2EFDA', 'FFD9E1F2', 'FFFFF2CC', 'FFFCE4D6', 'FFE1D5E7', 'FFD5E8D4', 'FFF8CECC'];
         const resColors = { '미분류': { bg: 'FFFF0000', fg: 'FFFFFFFF' } };
         const uniqueRes = [...new Set(MASTER_MAPPING.map(m => m.result)), '미분류'];
-        uniqueRes.forEach((res, i) => { if (!resultColors[res]) resultColors[res] = { bg: palette[i % palette.length], fg: 'FF333333' }; });
+        uniqueRes.forEach((res, i) => { if (!resColors[res]) resColors[res] = { bg: palette[i % palette.length], fg: 'FF333333' }; });
 
         const rawFiltered = window.lastData.filter(row => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(row, ['MID']).toString()));
+        if (rawFiltered.length === 0) return alert('필터링된 데이터(MID 기준)가 없습니다. MID를 확인해주세요.');
+        
         const grouped = {};
         rawFiltered.forEach(row => {
             const d = getVal(row, ['정산일', '거래일자']) || '기타';
