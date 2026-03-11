@@ -478,20 +478,39 @@
         const filtered = data.filter(r => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(r, ['MID']).toString()));
         let added = 0;
         const newItems = [];
-        const existingKeywords = MASTER_MAPPING.map(m => m.keyword.trim());
+        
+        // 기존 매핑 규칙들 (글자수 순 정렬하여 우선순위 반영)
+        const sortedMapping = [...MASTER_MAPPING].sort((a, b) => b.keyword.length - a.keyword.length);
 
         filtered.forEach(row => {
             const pName = (getVal(row, ['상품명']) || '').trim();
             if (!pName) return;
-            // 부분일치가 아니라 '정확히 동일한 키워드'가 있는지 확인하여 누락 방지
-            if (!existingKeywords.includes(pName) && !newItems.includes(pName)) {
-                newItems.push(pName);
-                MASTER_MAPPING.unshift({ keyword: pName, result: '미분류' });
-                existingKeywords.push(pName);
-                added++;
+
+            // 1. 이미 기존 규칙으로 분류가 가능한지 확인 (미분류가 아닌 결과가 나오는지)
+            let isAlreadyCovered = false;
+            for (let item of sortedMapping) {
+                if (pName.toLowerCase().includes(item.keyword.trim().toLowerCase()) && item.result !== '미분류') {
+                    isAlreadyCovered = true;
+                    break;
+                }
+            }
+
+            // 2. 분류가 불가능한 경우에만 신규 목록에 추가
+            if (!isAlreadyCovered && !newItems.includes(pName)) {
+                // 매핑 테이블에 정확히 동일한 키워드가 이미 있는지 최종 확인
+                const isExactMatch = MASTER_MAPPING.some(m => m.keyword.trim().toLowerCase() === pName.toLowerCase());
+                if (!isExactMatch) {
+                    newItems.push(pName);
+                    MASTER_MAPPING.unshift({ keyword: pName, result: '미분류' });
+                    added++;
+                }
             }
         });
-        if (added > 0) { saveMapping(); renderMappingTable(); alert(`${added}개의 신규 상품이 추가되었습니다. 분류를 확인해주세요.`); }
+        if (added > 0) { 
+            saveMapping(); 
+            renderMappingTable(); 
+            alert(`${added}개의 새로운 미분류 상품이 감지되었습니다. 상단 관리 패널에서 분류를 지정해주세요.`); 
+        }
     }
 
     function parseMoney(val) { return !val ? 0 : (typeof val === 'number' ? val : parseInt(val.toString().replace(/[^0-9-]/g, '')) || 0); }
