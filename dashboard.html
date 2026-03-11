@@ -411,7 +411,7 @@
             
             let mappedCat = '미분류';
             for (let item of sortedMapping) { 
-                if (pName.includes(item.keyword.trim())) { 
+                if (pName.toLowerCase().includes(item.keyword.trim().toLowerCase())) { 
                     mappedCat = item.result; 
                     break; 
                 } 
@@ -510,13 +510,13 @@
                     row.getCell(15).value = getVal(r, ['카드/은행', '카드사']);
                     row.getCell(18).value = getVal(r, ['구매자']);
                     row.getCell(19).value = pName;
-                    row.getCell(24).value = { formula: `IFERROR(LOOKUP(1, 0/(SEARCH(매핑데이터!$C$6:$C$5000, S${rIdx})*(매핑데이터!$C$6:$C$5000<>"")), 매핑데이터!$D$6:$D$5000), "미분류")` };
+                    row.getCell(24).value = { formula: `IFERROR(LOOKUP(1, 0/(FIND(UPPER(매핑데이터!$C$6:$C$5000), UPPER(S${rIdx}))*(매핑데이터!$C$6:$C$5000<>"")), 매핑데이터!$D$6:$D$5000), "미분류")` };
                     row.getCell(25).value = { formula: `N${rIdx}` };
                     row.getCell(26).value = { formula: `J${rIdx}+M${rIdx}` };
 
                     let m = '미분류';
                     for(let item of sortedMapping) { 
-                        if (pName.includes(item.keyword.trim())) { 
+                        if (pName.toLowerCase().includes(item.keyword.trim().toLowerCase())) { 
                             m = item.result; 
                             break; 
                         } 
