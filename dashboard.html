@@ -115,19 +115,20 @@
             <h2 style="margin:0; font-size: 1.2rem; color: #2c3e50;">🧩 알로 수수료 안분 관리</h2>
             <button class="btn-small" onclick="resetAlloMapping()" style="color: var(--danger);">🗑️ 안분 초기화</button>
         </div>
-        <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">※ 매핑된 '최종 분류 결과'별로 업장별 수수료 안분율을 설정하세요. (최대 6개 업장)</p>
+        <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">※ 최저가와 업장별 배정금액을 입력하면 안분율(%)이 자동 계산됩니다. (최대 6개)</p>
         
-        <div class="mapping-table-wrapper" style="max-height: 500px; overflow-x: auto;">
-            <table class="mapping-table" style="min-width: 1400px;">
+        <div class="mapping-table-wrapper" style="max-height: 600px; overflow-x: auto;">
+            <table class="mapping-table" style="min-width: 1600px;">
                 <thead>
                     <tr style="background: #f0faff;">
-                        <th style="width: 180px; position: sticky; left: 0; background: #f0faff; z-index: 11; border-right: 2px solid #e3e6f0;">상품 분류 (Master)</th>
-                        <th>안분 1 (업장 | %)</th>
-                        <th>안분 2 (업장 | %)</th>
-                        <th>안분 3 (업장 | %)</th>
-                        <th>안분 4 (업장 | %)</th>
-                        <th>안분 5 (업장 | %)</th>
-                        <th>안분 6 (업장 | %)</th>
+                        <th style="width: 150px; position: sticky; left: 0; background: #f0faff; z-index: 11; border-right: 1px solid #e3e6f0;">상품 분류 (Master)</th>
+                        <th style="width: 120px; background: #eef2ff;">최저가(기준)</th>
+                        <th>안분 1 (업장 / 금액)</th>
+                        <th>안분 2 (업장 / 금액)</th>
+                        <th>안분 3 (업장 / 금액)</th>
+                        <th>안분 4 (업장 / 금액)</th>
+                        <th>안분 5 (업장 / 금액)</th>
+                        <th>안분 6 (업장 / 금액)</th>
                         <th style="width: 100px; text-align: center; background: #fffde7; font-weight: bold;">안분율 합계</th>
                     </tr>
                 </thead>
@@ -176,15 +177,15 @@
             saveMapping();
         }
 
-        const savedAllo = localStorage.getItem('shinan_allo_mapping_v2');
+        const savedAllo = localStorage.getItem('shinan_allo_mapping_v3');
         if (savedAllo) ALLO_MAPPING = JSON.parse(savedAllo);
 
         renderMappingTable();
         renderAlloTable();
     }
 
-    function saveAlloMapping() { localStorage.setItem('shinan_allo_mapping_v2', JSON.stringify(ALLO_MAPPING)); }
-    function resetAlloMapping() { if (confirm('안분 설정을 초기화하시겠습니까?')) { localStorage.removeItem('shinan_allo_mapping_v2'); location.reload(); } }
+    function saveAlloMapping() { localStorage.setItem('shinan_allo_mapping_v3', JSON.stringify(ALLO_MAPPING)); }
+    function resetAlloMapping() { if (confirm('안분 설정을 초기화하시겠습니까?')) { localStorage.removeItem('shinan_allo_mapping_v3'); location.reload(); } }
 
     function renderAlloTable() {
         const tbody = document.getElementById('alloTableBody');
@@ -194,23 +195,33 @@
         
         let html = '';
         categories.forEach(cat => {
-            if (!ALLO_MAPPING[cat]) {
-                ALLO_MAPPING[cat] = Array(6).fill(0).map(() => ({ target: '', rate: 0 }));
+            if (!ALLO_MAPPING[cat] || !ALLO_MAPPING[cat].items) {
+                ALLO_MAPPING[cat] = {
+                    basePrice: 0,
+                    items: Array(6).fill(0).map(() => ({ target: '', price: 0, rate: 0 }))
+                };
             }
             
-            const allocs = ALLO_MAPPING[cat];
+            const data = ALLO_MAPPING[cat];
             let rowSum = 0;
-            allocs.forEach(a => rowSum += (parseFloat(a.rate) || 0));
+            data.items.forEach(it => rowSum += (parseFloat(it.rate) || 0));
 
             html += `<tr>
                 <td style="font-weight: bold; color: var(--primary); position: sticky; left: 0; background: white; z-index: 5; border-right: 2px solid #e3e6f0;">${cat}</td>
-                ${allocs.map((a, i) => `
+                <td style="background: #fbfbff;">
+                    <input type="number" class="input-inline" style="font-weight: bold; text-align: right;" value="${data.basePrice || 0}" 
+                           onchange="updateAlloBasePrice('${cat}', this.value)" placeholder="기준가">
+                </td>
+                ${data.items.map((it, i) => `
                     <td>
-                        <div style="display: flex; gap: 4px;">
-                            <input type="text" class="input-inline" style="flex: 1.5;" value="${a.target || ''}" 
-                                   onchange="updateAlloData('${cat}', ${i}, 'target', this.value)" placeholder="업장">
-                            <input type="number" class="input-inline" style="flex: 1; text-align: right;" value="${a.rate || 0}" 
-                                   onchange="updateAlloData('${cat}', ${i}, 'rate', this.value)" placeholder="%">
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <input type="text" class="input-inline" value="${it.target || ''}" 
+                                   onchange="updateAlloItem('${cat}', ${i}, 'target', this.value)" placeholder="업장명">
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <input type="number" class="input-inline" style="flex: 1.5; text-align: right;" value="${it.price || 0}" 
+                                       onchange="updateAlloItemPrice('${cat}', ${i}, this.value)" placeholder="금액">
+                                <span style="font-size: 0.75rem; color: #666; min-width: 45px;">${(it.rate || 0).toFixed(1)}%</span>
+                            </div>
                         </div>
                     </td>
                 `).join('')}
@@ -220,13 +231,32 @@
             </tr>`;
         });
         
-        tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center; padding:20px;">먼저 상품 매핑을 진행하여 분류 결과를 등록해주세요.</td></tr>';
+        tbody.innerHTML = html || '<tr><td colspan="9" style="text-align:center; padding:20px;">먼저 상품 매핑을 진행해주세요.</td></tr>';
         saveAlloMapping();
     }
 
-    function updateAlloData(cat, index, field, val) {
-        if (!ALLO_MAPPING[cat]) return;
-        ALLO_MAPPING[cat][index][field] = field === 'rate' ? (parseFloat(val) || 0) : val;
+    function updateAlloBasePrice(cat, val) {
+        const base = parseFloat(val) || 0;
+        ALLO_MAPPING[cat].basePrice = base;
+        ALLO_MAPPING[cat].items.forEach(it => {
+            if (base > 0) it.rate = (it.price / base) * 100;
+            else it.rate = 0;
+        });
+        renderAlloTable();
+    }
+
+    function updateAlloItem(cat, index, field, val) {
+        ALLO_MAPPING[cat].items[index][field] = val;
+        saveAlloMapping();
+    }
+
+    function updateAlloItemPrice(cat, index, val) {
+        const p = parseFloat(val) || 0;
+        const base = ALLO_MAPPING[cat].basePrice || 0;
+        ALLO_MAPPING[cat].items[index].price = p;
+        if (base > 0) {
+            ALLO_MAPPING[cat].items[index].rate = (p / base) * 100;
+        }
         renderAlloTable();
     }
 
