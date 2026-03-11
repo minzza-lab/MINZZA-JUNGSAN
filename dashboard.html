@@ -14,6 +14,7 @@
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .upload-area { background: white; border: 2px dashed #ccc; border-radius: 10px; padding: 60px 40px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 30px; }
         .upload-area:hover, .upload-area.dragover { border-color: var(--primary); background-color: #f1f4ff; transform: translateY(-2px); }
+        
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .stat-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 5px solid var(--primary); transition: transform 0.2s; }
         .stat-card:hover { transform: translateY(-5px); }
@@ -131,7 +132,7 @@
         return '';
     }
 
-    // 마스터 매핑 데이터 (원래 버전 복구)
+    // 마스터 매핑 데이터 (미분류 제거)
     const MASTER_MAPPING = [
         { keyword: '밀리터리', result: '밀리터리' },
         { keyword: '시즌권', result: '스키시즌권' },
@@ -148,8 +149,7 @@
         { keyword: '카바나', result: '카바나' },
         { keyword: '썬베드', result: '선베드' },
         { keyword: 'wp시즌패스', result: '워터파크시즌패스' },
-        { keyword: '아레나', result: '아레나' },
-        { keyword: '미분류', result: '미분류' }
+        { keyword: '아레나', result: '아레나' }
     ];
 
     async function exportToProcessedFormat() {
@@ -157,16 +157,32 @@
             if (!window.lastData) return alert('데이터가 없습니다.');
             const workbook = new ExcelJS.Workbook();
             
-            // 1. [매핑데이터] 시트 관리 (심플한 2단 구조)
+            // 미매핑 상품 자동 검색
+            const rawFiltered = window.lastData.filter(row => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(row, ['MID']).toString()));
+            if (rawFiltered.length === 0) return alert('필터링된 데이터(MID 기준)가 없습니다.');
+
+            const discoveredUnmapped = new Set();
+            rawFiltered.forEach(row => {
+                const pName = getVal(row, ['상품명']) || '';
+                let isMapped = false;
+                for (const m of MASTER_MAPPING) { if (pName.includes(m.keyword)) { isMapped = true; break; } }
+                if (!isMapped && pName !== '') discoveredUnmapped.add(pName);
+            });
+
+            // 1. [매핑데이터] 시트 구성
             const mapSheet = workbook.addWorksheet('매핑데이터', { views: [{ showGridLines: false }] });
             mapSheet.getCell('B2').value = '⚙️ 상품 매핑 규칙 관리 컨트롤 패널';
             mapSheet.getCell('B2').font = { size: 16, bold: true, color: { argb: 'FF4E73DF' } };
-            const guide = ['1. 이 시트에서 키워드와 결과를 수정하면 모든 시트의 데이터가 실시간으로 바뀝니다.', '2. 수식 반영이 느릴 경우 [Ctrl + Alt + F9]를 눌러 엑셀을 새로고침 하세요.', '3. 미분류 데이터는 빨간색으로 표시됩니다.'];
+            const guide = [
+                '1. 이 시트에서 키워드와 결과를 수정하면 모든 시트의 데이터가 실시간으로 바뀝니다.',
+                '2. 하단에 나열된 [미분류 상품]들에 대해 옆칸에 [최종 분류 결과]를 입력하시면 즉시 반영됩니다.',
+                '3. 수식 반영이 느릴 경우 [Ctrl + Alt + F9]를 눌러 엑셀을 새로고침 하세요.'
+            ];
             guide.forEach((line, i) => { mapSheet.getCell(`B${4+i}`).value = line; mapSheet.getCell(`B${4+i}`).font = { size: 10, color: { argb: 'FF555555' } }; });
 
             const tHeaderRow = 10;
-            mapSheet.getCell(`C${tHeaderRow}`).value = '검색 키워드';
-            mapSheet.getCell(`D${tHeaderRow}`).value = '최종 분류 결과';
+            mapSheet.getCell(`C${tHeaderRow}`).value = '검색 키워드 (상품명에 포함된 단어)';
+            mapSheet.getCell(`D${tHeaderRow}`).value = '최종 분류 결과 (카테고리명)';
             ['C', 'D'].forEach(col => {
                 const cell = mapSheet.getCell(`${col}${tHeaderRow}`);
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4E73DF' } };
@@ -175,29 +191,37 @@
                 cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
             });
 
-            for (let i = 1; i <= 1000; i++) {
-                ['C', 'D'].forEach(col => {
-                    const cell = mapSheet.getCell(`${col}${tHeaderRow + i}`);
-                    cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-                    cell.alignment = { horizontal: 'center' };
-                    cell.font = { size: 9 };
-                });
-            }
+            // 기존 규칙
             MASTER_MAPPING.forEach((m, i) => {
                 mapSheet.getCell(`C${tHeaderRow+1+i}`).value = m.keyword;
                 mapSheet.getCell(`D${tHeaderRow+1+i}`).value = m.result;
             });
-            mapSheet.getColumn('C').width = 35; mapSheet.getColumn('D').width = 35;
 
-            // 색상 팔레트 및 카테고리 (ARGB 형식 명확화)
+            // 신규 미분류 상품 자동 나열
+            let currentMapRow = tHeaderRow + MASTER_MAPPING.length + 1;
+            discoveredUnmapped.forEach(pName => {
+                mapSheet.getCell(`C${currentMapRow}`).value = pName;
+                mapSheet.getCell(`D${currentMapRow}`).value = '미분류';
+                mapSheet.getCell(`D${currentMapRow}`).font = { color: { argb: 'FFFF0000' }, bold: true };
+                currentMapRow++;
+            });
+
+            for (let i = 1; i <= 3000; i++) {
+                ['C', 'D'].forEach(col => {
+                    const cell = mapSheet.getCell(`${col}${tHeaderRow + i}`);
+                    cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+                    cell.alignment = { horizontal: 'center' };
+                    cell.font = cell.font || { size: 9 };
+                });
+            }
+            mapSheet.getColumn('C').width = 45; mapSheet.getColumn('D').width = 30;
+
+            // 색상 팔레트 및 카테고리
             const palette = ['FFE2EFDA', 'FFD9E1F2', 'FFFFF2CC', 'FFFCE4D6', 'FFE1D5E7', 'FFD5E8D4', 'FFF8CECC'];
             const resColors = { '미분류': { bg: 'FFFF0000', fg: 'FFFFFFFF' } };
             const uniqueRes = [...new Set(MASTER_MAPPING.map(m => m.result)), '미분류'];
             uniqueRes.forEach((res, i) => { if (!resColors[res]) resColors[res] = { bg: palette[i % palette.length], fg: 'FF333333' }; });
 
-            const rawFiltered = window.lastData.filter(row => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(row, ['MID']).toString()));
-            if (rawFiltered.length === 0) return alert('필터링된 데이터(MID 기준)가 없습니다.');
-            
             const grouped = {};
             rawFiltered.forEach(row => {
                 const d = getVal(row, ['정산일', '거래일자']) || '기타';
@@ -211,7 +235,6 @@
                 const sheet = workbook.addWorksheet(date, { views: [{ zoomScale: 90 }], pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1 } });
                 sheet.properties.tabColor = { argb: palette[Object.keys(grouped).indexOf(date) % palette.length] };
 
-                // 고정 열 너비
                 sheet.columns = [{width:6},{width:15},{width:12},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:13},{width:11},{width:10,hidden:true},{width:10,hidden:true},{width:11},{width:12,hidden:true},{width:16},{width:12,hidden:true},{width:15,hidden:true},{width:11},{width:32},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:16},{width:13},{width:13}];
 
                 const mmdd = date.replace('월', '.').replace('일', '');
@@ -235,7 +258,7 @@
                     const amt = parseMoney(getVal(r, ['거래금액', '결제금액']));
 
                     row.getCell(1).value = i + 1;
-                    row.getCell(2).value = getVal(r, ['결제 서비스명']);
+                    row.getCell(2).value = getVal(r, ['결제 서비스명', '결제수단']);
                     row.getCell(3).value = getVal(r, ['정산일', '거래일자']);
                     row.getCell(9).value = amt;
                     row.getCell(10).value = parseMoney(getVal(r, ['결제수수료', '수수료', '수수료합계']));
@@ -263,24 +286,19 @@
                     });
                 });
 
-                // X열 조건부 서식 (모든 규칙을 통합하여 적용)
+                // X열 조건부 서식
                 const endRow = rows.length + 3;
                 const condRules = uniqueRes.map(res => {
                     const color = resColors[res] || { bg: 'FFFFFFFF', fg: 'FF333333' };
                     return {
-                        type: 'cellIs',
-                        operator: 'equal',
-                        formulae: [`"${res}"`],
+                        type: 'cellIs', operator: 'equal', formulae: [`"${res}"`],
                         style: { 
-                            fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: color.bg } },
+                            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: color.bg } },
                             font: { color: { argb: color.fg }, bold: (res === '미분류') }
                         }
                     };
                 });
-                sheet.addConditionalFormatting({
-                    ref: `X4:X${endRow}`,
-                    rules: condRules
-                });
+                sheet.addConditionalFormatting({ ref: `X4:X${endRow}`, rules: condRules });
 
                 // 합계 행
                 const tIdx = endRow + 2;
@@ -301,7 +319,7 @@
                     sheet.getCell(tIdx, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
                 }
 
-                // 하단 대시보드 (금액 정확도 개선)
+                // 하단 요약표
                 const dbS = tIdx + 2;
                 const merges = [[2,3], [4,5], [6,9], [10,13], [14,17], [18,21], [22,25]];
                 const labels = ['구분', '건수', '거래금액', '결제수수료', 'VAT', '정산금액', '수수료+VAT'];
@@ -337,13 +355,12 @@
                     curR++;
                 });
 
-                // 요약표 최종 총계
                 sheet.mergeCells(curR, 2, curR, 3);
                 sheet.getCell(curR, 2).value = '총 합계';
                 merges.slice(1).forEach((m, j) => {
                     sheet.mergeCells(curR, m[0], curR, m[1]);
                     const cell = sheet.getCell(curR, m[0]);
-                    const L = ['D', 'F', 'J', 'N', 'R', 'V'][j]; // 하단 대시보드 컬럼 기준
+                    const L = ['D', 'F', 'J', 'N', 'R', 'V'][j];
                     cell.value = { formula: `SUM(${L}${dbS+1}:${L}${curR-1})` };
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
                     cell.font = { bold: true, size: 10 };
@@ -360,10 +377,7 @@
             link.href = URL.createObjectURL(new Blob([buf]));
             link.download = `나이스페이_정산보고서_${new Date().toISOString().slice(0,10)}.xlsx`;
             link.click();
-        } catch (err) {
-            console.error(err);
-            alert('엑셀 파일 생성 중 오류가 발생했습니다: ' + err.message + '\n\n상세 오류: ' + err.stack);
-        }
+        } catch (err) { alert('오류: ' + err.message); }
     }
 
     function processData(data) {
@@ -382,7 +396,6 @@
             const pName = getVal(r, ['상품명']) || '미지정';
             const dateVal = getVal(r, ['정산일', '거래일자']) || '기타';
             
-            // 날짜 포맷팅 (YYYY-MM-DD)
             let dateKey = '기타';
             const m = dateVal.toString().match(/(\d{4})[-.\/]?(0[1-9]|1[0-2])[-.\/]?(0[1-9]|[12][0-9]|3[01])/);
             if (m) dateKey = `${m[1]}-${m[2]}-${m[3]}`;
@@ -392,16 +405,11 @@
             totalFee += (fee + vat);
             if (amt < 0) { cancelCount++; cancelAmt += Math.abs(amt); }
 
-            // 일별 집계
             dailyData[dateKey] = (dailyData[dateKey] || 0) + amt;
-            // 결제수단 집계
             payMethodData[method] = (payMethodData[method] || 0) + amt;
             
-            // 상품 매핑 및 집계
             let mappedCat = '미분류';
-            for (let item of MASTER_MAPPING) {
-                if (pName.includes(item.keyword)) { mappedCat = item.result; break; }
-            }
+            for (let item of MASTER_MAPPING) { if (pName.includes(item.keyword)) { mappedCat = item.result; break; } }
             if (!productData[mappedCat]) productData[mappedCat] = { count: 0, amt: 0 };
             productData[mappedCat].count++;
             productData[mappedCat].amt += amt;
@@ -410,125 +418,45 @@
         const avgAmt = filtered.length ? Math.round(totalGross / filtered.length) : 0;
         const feeRate = totalGross ? ((totalFee / totalGross) * 100).toFixed(2) : 0;
 
-        // 1. 통계 카드 렌더링
         document.getElementById('statsGrid').innerHTML = `
-            <div class="stat-card">
-                <h3>총 거래 금액</h3>
-                <div class="value">${totalGross.toLocaleString()}원</div>
-                <div class="sub-text">전체 ${filtered.length.toLocaleString()}건 결제</div>
-            </div>
-            <div class="stat-card" style="border-left-color: var(--success)">
-                <h3>순 정산 예정액</h3>
-                <div class="value">${totalNet.toLocaleString()}원</div>
-                <div class="sub-text">수수료 제외 실수령액</div>
-            </div>
-            <div class="stat-card" style="border-left-color: var(--warning)">
-                <h3>실질 수수료 (VAT포함)</h3>
-                <div class="value">${totalFee.toLocaleString()}원</div>
-                <div class="sub-text">평균 수수료율: ${feeRate}%</div>
-            </div>
-            <div class="stat-card" style="border-left-color: var(--danger)">
-                <h3>취소 발생</h3>
-                <div class="value">${cancelAmt.toLocaleString()}원</div>
-                <div class="sub-text">총 ${cancelCount}건의 취소/환불</div>
-            </div>
-            <div class="stat-card" style="border-left-color: var(--info)">
-                <h3>평균 객단가</h3>
-                <div class="value">${avgAmt.toLocaleString()}원</div>
-                <div class="sub-text">1건당 평균 결제 금액</div>
-            </div>
+            <div class="stat-card"><h3>총 거래 금액</h3><div class="value">${totalGross.toLocaleString()}원</div><div class="sub-text">전체 ${filtered.length.toLocaleString()}건 결제</div></div>
+            <div class="stat-card" style="border-left-color: var(--success)"><h3>순 정산 예정액</h3><div class="value">${totalNet.toLocaleString()}원</div><div class="sub-text">수수료 제외 실수령액</div></div>
+            <div class="stat-card" style="border-left-color: var(--warning)"><h3>실질 수수료 (VAT포함)</h3><div class="value">${totalFee.toLocaleString()}원</div><div class="sub-text">평균 수수료율: ${feeRate}%</div></div>
+            <div class="stat-card" style="border-left-color: var(--danger)"><h3>취소 발생</h3><div class="value">${cancelAmt.toLocaleString()}원</div><div class="sub-text">총 ${cancelCount}건의 취소/환불</div></div>
+            <div class="stat-card" style="border-left-color: var(--info)"><h3>평균 객단가</h3><div class="value">${avgAmt.toLocaleString()}원</div><div class="sub-text">1건당 평균 결제 금액</div></div>
         `;
 
-        // 2. 요약 테이블 렌더링
-        let tableHtml = `
-            <table class="summary-table">
-                <thead>
-                    <tr>
-                        <th>상품 분류</th>
-                        <th class="num">결제 건수</th>
-                        <th class="num">거래 금액</th>
-                        <th class="num">매출 비중</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        
-        Object.entries(productData)
-            .sort((a, b) => b[1].amt - a[1].amt)
-            .forEach(([cat, data]) => {
-                const ratio = ((data.amt / totalGross) * 100).toFixed(1);
-                tableHtml += `
-                    <tr>
-                        <td><strong>${cat}</strong></td>
-                        <td class="num">${data.count.toLocaleString()}건</td>
-                        <td class="num">${data.amt.toLocaleString()}원</td>
-                        <td class="num">${ratio}%</td>
-                    </tr>
-                `;
-            });
+        let tableHtml = `<table class="summary-table"><thead><tr><th>상품 분류</th><th class="num">결제 건수</th><th class="num">거래 금액</th><th class="num">매출 비중</th></tr></thead><tbody>`;
+        Object.entries(productData).sort((a, b) => b[1].amt - a[1].amt).forEach(([cat, data]) => {
+            const ratio = ((data.amt / totalGross) * 100).toFixed(1);
+            tableHtml += `<tr><td><strong>${cat}</strong></td><td class="num">${data.count.toLocaleString()}건</td><td class="num">${data.amt.toLocaleString()}원</td><td class="num">${ratio}%</td></tr>`;
+        });
         tableHtml += `</tbody></table>`;
         document.getElementById('summaryTableContainer').innerHTML = tableHtml;
 
-        // 3. 차트 렌더링
         renderCharts(dailyData, payMethodData, productData);
-        
         document.getElementById('dashboardContent').classList.remove('hidden');
         document.getElementById('reportTitle').innerText = `📋 분석 리포트 (${Object.keys(dailyData)[0]} ~ ${Object.keys(dailyData).pop()})`;
     }
 
     function renderCharts(daily, methods, products) {
-        // 기존 차트 파괴 (재로드 시 필요)
         Object.values(charts).forEach(c => c.destroy());
-
-        // 일별 추이 차트
         const dailyLabels = Object.keys(daily).sort();
         charts.daily = new Chart(document.getElementById('dailyTrendChart'), {
             type: 'line',
-            data: {
-                labels: dailyLabels.map(d => d.substring(5)),
-                datasets: [{
-                    label: '일별 매출',
-                    data: dailyLabels.map(l => daily[l]),
-                    borderColor: '#4e73df',
-                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
+            data: { labels: dailyLabels.map(d => d.substring(5)), datasets: [{ label: '일별 매출', data: dailyLabels.map(l => daily[l]), borderColor: '#4e73df', backgroundColor: 'rgba(78, 115, 223, 0.05)', fill: true, tension: 0.3 }] },
             options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
         });
-
-        // 결제수단 비중 차트
         charts.method = new Chart(document.getElementById('paymentMethodChart'), {
             type: 'doughnut',
-            data: {
-                labels: Object.keys(methods),
-                datasets: [{
-                    data: Object.values(methods),
-                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796']
-                }]
-            },
+            data: { labels: Object.keys(methods), datasets: [{ data: Object.values(methods), backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'] }] },
             options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
         });
-
-        // 상품 분류별 매출 비중 차트
         const productEntries = Object.entries(products).sort((a, b) => b[1].amt - a[1].amt);
         charts.product = new Chart(document.getElementById('topProductsChart'), {
             type: 'bar',
-            data: {
-                labels: productEntries.map(e => e[0]),
-                datasets: [{
-                    label: '매출액',
-                    data: productEntries.map(e => e[1].amt),
-                    backgroundColor: '#4e73df'
-                }]
-            },
-            options: { 
-                indexAxis: 'y',
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: false } },
-                scales: { x: { ticks: { callback: v => (v/10000).toLocaleString() + '만' } } }
-            }
+            data: { labels: productEntries.map(e => e[0]), datasets: [{ label: '매출액', data: productEntries.map(e => e[1].amt), backgroundColor: '#4e73df' }] },
+            options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { callback: v => (v/10000).toLocaleString() + '만' } } } }
         });
     }
 </script>
