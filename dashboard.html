@@ -223,31 +223,6 @@
         tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center; padding:20px;">먼저 상품 매핑을 진행하여 분류 결과를 등록해주세요.</td></tr>';
         saveAlloMapping();
     }
-            const allocs = ALLO_MAPPING[cat];
-            let rowSum = 0;
-            allocs.forEach(a => rowSum += (parseFloat(a.rate) || 0));
-
-            html += `<tr>
-                <td style="font-weight: bold; color: var(--primary); position: sticky; left: 0; background: white; z-index: 5; border-right: 2px solid #e3e6f0;">${cat}</td>
-                ${allocs.map((a, i) => `
-                    <td>
-                        <div style="display: flex; gap: 4px;">
-                            <input type="text" class="input-inline" style="flex: 1.5;" value="${a.target || ''}" 
-                                   onchange="updateAlloData('${cat}', ${i}, 'target', this.value)" placeholder="업장">
-                            <input type="number" class="input-inline" style="flex: 1; text-align: right;" value="${a.rate || 0}" 
-                                   onchange="updateAlloData('${cat}', ${i}, 'rate', this.value)" placeholder="%">
-                        </div>
-                    </td>
-                `).join('')}
-                <td style="text-align: center; background: #fffde7; font-weight: bold; color: ${Math.abs(rowSum - 100) < 0.1 ? 'var(--success)' : 'var(--danger)'};">
-                    ${rowSum.toFixed(1)}%
-                </td>
-            </tr>`;
-        });
-        
-        tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center; padding:20px;">먼저 상품 매핑을 진행하여 분류 결과를 등록해주세요.</td></tr>';
-        saveAlloMapping();
-    }
 
     function updateAlloData(cat, index, field, val) {
         if (!ALLO_MAPPING[cat]) return;
