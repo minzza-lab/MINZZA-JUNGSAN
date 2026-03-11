@@ -350,7 +350,9 @@
                 cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
                 cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
             });
-            MASTER_MAPPING.forEach((m, i) => {
+            MASTER_MAPPING.slice()
+                .sort((a, b) => a.keyword.length - b.keyword.length)
+                .forEach((m, i) => {
                 const rIdx = tHeaderRow + 1 + i;
                 mapSheet.getCell(`C${rIdx}`).value = m.keyword;
                 mapSheet.getCell(`D${rIdx}`).value = m.result;
