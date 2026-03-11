@@ -62,7 +62,9 @@
         <div class="mapping-header">
             <h2 style="margin:0; font-size: 1.2rem; color: #2c3e50;">⚙️ 상품 매핑 관리 (수정 시 실시간 반영)</h2>
             <div style="display: flex; gap: 10px;">
-                <button class="btn-small" onclick="copyConfigToClipboard()" style="color: var(--primary); font-weight: bold; border-color: var(--primary);">💾 설정 백업 (공유/업데이트용)</button>
+                <button class="btn-small" onclick="exportConfigToExcel()" style="color: var(--primary); font-weight: bold; border-color: var(--primary);">📥 설정 내보내기 (Excel)</button>
+                <button class="btn-small" onclick="document.getElementById('configInput').click()" style="color: var(--success); font-weight: bold; border-color: var(--success);">📤 설정 가져오기 (Excel)</button>
+                <input type="file" id="configInput" style="display:none;" accept=".xlsx" onchange="importConfigFromExcel(this)">
                 <button class="btn-small" onclick="resetMapping()" style="color: var(--danger);">🗑️ 초기화</button>
             </div>
         </div>
