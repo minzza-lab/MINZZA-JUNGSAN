@@ -189,14 +189,14 @@
             });
             mapSheet.getColumn('C').width = 35; mapSheet.getColumn('D').width = 35;
 
-            // 색상 팔레트 및 카테고리
+            // 색상 팔레트 및 카테고리 (ARGB 형식 명확화)
             const palette = ['FFE2EFDA', 'FFD9E1F2', 'FFFFF2CC', 'FFFCE4D6', 'FFE1D5E7', 'FFD5E8D4', 'FFF8CECC'];
             const resColors = { '미분류': { bg: 'FFFF0000', fg: 'FFFFFFFF' } };
             const uniqueRes = [...new Set(MASTER_MAPPING.map(m => m.result)), '미분류'];
             uniqueRes.forEach((res, i) => { if (!resColors[res]) resColors[res] = { bg: palette[i % palette.length], fg: 'FF333333' }; });
 
             const rawFiltered = window.lastData.filter(row => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(row, ['MID']).toString()));
-            if (rawFiltered.length === 0) return alert('필터링된 데이터(MID 기준)가 없습니다. MID를 확인해주세요.');
+            if (rawFiltered.length === 0) return alert('필터링된 데이터(MID 기준)가 없습니다.');
             
             const grouped = {};
             rawFiltered.forEach(row => {
@@ -263,30 +263,42 @@
                     });
                 });
 
-                // X열 조건부 서식
-                const rules = Object.entries(resColors).map(([res, s]) => ({
-                    type: 'cellIs', operator: 'equal', formulae: [`"${res}"`],
-                    style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: s.bg } }, font: { color: { argb: s.fg }, bold: (res==='미분류'), size: 9 } }
-                }));
-                sheet.addConditionalFormatting({ ref: `X4:X${rows.length + 3}`, rules });
+                // X열 조건부 서식 (정확한 엑셀 서식 규칙 적용)
+                const endRow = rows.length + 3;
+                uniqueRes.forEach(res => {
+                    const color = resColors[res] || { bg: 'FFFFFFFF', fg: 'FF000000' };
+                    sheet.addConditionalFormatting({
+                        ref: `X4:X${endRow}`,
+                        rules: [{
+                            type: 'cellIs', operator: 'equal', formulae: [`"${res}"`],
+                            style: { 
+                                fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: color.bg } },
+                                font: { color: { argb: color.fg }, bold: (res === '미분류') }
+                            }
+                        }]
+                    });
+                });
 
                 // 합계 행
-                const endD = rows.length + 3;
-                const tIdx = endD + 2;
+                const tIdx = endRow + 2;
                 sheet.mergeCells(tIdx, 1, tIdx, 3);
                 const tRow = sheet.getRow(tIdx);
                 tRow.getCell(1).value = '합계';
                 [9, 10, 13, 25, 26].forEach(c => {
                     const L = {9:'I', 10:'J', 13:'M', 25:'Y', 26:'Z'}[c];
                     const cell = tRow.getCell(c);
-                    cell.value = { formula: `SUM(${L}4:${L}${endD})` };
+                    cell.value = { formula: `SUM(${L}4:${L}${endRow})` };
                     cell.numFmt = '#,##0'; cell.font = { bold: true, size: 9 };
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: c===25 ? 'FFFFF2CC' : (c===26 ? 'FFFCE4D6' : 'FFF2F2F2') } };
                     cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
                     cell.alignment = { horizontal: 'right' };
                 });
+                for(let c=1; c<=26; c++) if(![9,10,13,25,26].includes(c)) { 
+                    sheet.getCell(tIdx, c).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; 
+                    sheet.getCell(tIdx, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+                }
 
-                // 하단 대시보드
+                // 하단 대시보드 (금액 정확도 개선)
                 const dbS = tIdx + 2;
                 const merges = [[2,3], [4,5], [6,9], [10,13], [14,17], [18,21], [22,25]];
                 const labels = ['구분', '건수', '거래금액', '결제수수료', 'VAT', '정산금액', '수수료+VAT'];
@@ -307,12 +319,12 @@
                     merges.forEach((m, j) => {
                         sheet.mergeCells(curR, m[0], curR, m[1]);
                         const cell = row.getCell(m[0]);
-                        const xAbs = `$X$4:$X$${endD}`;
+                        const xAbs = `$X$4:$X$${endRow}`;
                         if (j === 0) cell.value = res;
                         else if (j === 1) cell.value = { formula: `COUNTIF(${xAbs}, B${curR})` };
                         else {
                             const L = ['I', 'J', 'M', 'Y', 'Z'][j-2];
-                            cell.value = { formula: `SUMIF(${xAbs}, B${curR}, $${L}$4:$${L}$${endD})` };
+                            cell.value = { formula: `SUMIF(${xAbs}, B${curR}, $${L}$4:$${L}$${endRow})` };
                         }
                         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
                         cell.font = { size: 9, name: '맑은 고딕' };
@@ -328,7 +340,7 @@
                 merges.slice(1).forEach((m, j) => {
                     sheet.mergeCells(curR, m[0], curR, m[1]);
                     const cell = sheet.getCell(curR, m[0]);
-                    const L = ['D', 'F', 'J', 'N', 'R', 'V'][j];
+                    const L = ['D', 'F', 'J', 'N', 'R', 'V'][j]; // 하단 대시보드 컬럼 기준
                     cell.value = { formula: `SUM(${L}${dbS+1}:${L}${curR-1})` };
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
                     cell.font = { bold: true, size: 10 };
