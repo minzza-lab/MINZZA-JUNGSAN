@@ -110,11 +110,8 @@
                 <button class="btn btn-danger" style="padding:5px 10px; font-size:0.75rem;" onclick="resetMapping()">초기화</button>
             </div>
             
-            <!-- 검토 알림창 -->
-            <div id="unclassifiedSection" class="hidden" style="margin-bottom: 20px; background: #fffbeb; border: 2px solid #fde68a; padding: 15px; border-radius: 12px; animation: pulse 2s infinite;">
-                <div style="font-weight: 900; color: #92400e; margin-bottom: 10px; display:flex; align-items:center; gap:8px;">
-                    🔔 검토 필요 상품 발견 (<span id="unclassifiedCount">0</span>)
-                </div>
+            <div id="unclassifiedSection" class="hidden" style="margin-bottom: 20px; background: #fffbeb; border: 2px solid #fde68a; padding: 15px; border-radius: 12px;">
+                <div style="font-weight: 900; color: #92400e; margin-bottom: 10px;">🔔 검토 필요 상품 (<span id="unclassifiedCount">0</span>)</div>
                 <div class="table-wrapper" style="max-height: 180px; background:white;">
                     <table><tbody id="unclassifiedTableBody"></tbody></table>
                 </div>
@@ -127,8 +124,8 @@
                 </table>
             </div>
             <div style="display:grid; grid-template-columns: 2fr 1fr auto; gap:10px; margin-top:20px; background:#f8fafc; padding:15px; border-radius:12px;">
-                <input type="text" id="newKeyword" class="input-inline" placeholder="새 키워드 입력...">
-                <input type="text" id="newResult" class="input-inline" placeholder="결과명...">
+                <input type="text" id="newKeyword" class="input-inline" placeholder="키워드...">
+                <input type="text" id="newResult" class="input-inline" placeholder="결과...">
                 <button class="btn btn-primary" onclick="addMappingRule()">추가</button>
             </div>
         </div>
@@ -141,14 +138,7 @@
             </div>
             <div class="table-wrapper" style="max-height: 520px; background:#f8fafc;">
                 <table style="min-width: 900px;">
-                    <thead>
-                        <tr>
-                            <th style="width:140px; position:sticky; left:0; background:#f1f5f9;">분류명</th>
-                            <th style="width:100px;">기준 최저가</th>
-                            <th>업장별 안분 세부 설정</th>
-                            <th style="width:70px; text-align:center;">합계</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th style="width:140px;">분류명</th><th style="width:100px;">기준 최저가</th><th>안분 세부 설정</th><th style="width:70px;">합계</th></tr></thead>
                     <tbody id="alloTableBody"></tbody>
                 </table>
             </div>
@@ -159,47 +149,30 @@
     <div class="upload-card" id="dropZone" onclick="document.getElementById('fileInput').click()">
         <div class="icon">🚀</div>
         <h2 style="margin:0; color: var(--primary);">정산 로우데이터 업로드</h2>
-        <p style="color: var(--text-muted); font-weight: 600;">파일을 여기에 끌어다 놓거나 클릭하여 선택하세요 (Excel, CSV)</p>
+        <p style="color: var(--text-muted); font-weight: 600;">파일을 여기에 끌어다 놓거나 클릭하여 선택하세요</p>
         <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
     </div>
 
-    <!-- 결과 대시보드 (분석 완료 시 노출) -->
+    <!-- 결과 대시보드 -->
     <div id="dashboardContent" class="hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
-            <h2 id="reportTitle" style="margin:0; font-size: 1.8rem; font-weight: 900; letter-spacing: -1px;">📋 분석 결과 리포트</h2>
-            <button class="btn btn-primary" style="padding: 18px 35px; font-size: 1.1rem; border-radius: 12px;" onclick="exportToProcessedFormat()">
-                📥 최종 가공 엑셀 다운로드
-            </button>
+            <h2 id="reportTitle" style="margin:0; font-size: 1.8rem; font-weight: 900;">📋 분석 데이터 리포트</h2>
+            <button class="btn btn-primary" style="padding: 18px 35px; font-size: 1.1rem;" onclick="exportToProcessedFormat()">📥 최종 가공 엑셀 다운로드</button>
         </div>
-
-        <!-- 핵심 요약 지표 -->
         <div class="stats-grid" id="statsGrid"></div>
-
-        <!-- 시각화 구역 -->
         <div class="charts-container">
-            <div class="card chart-card">
-                <div class="card-title">📈 거래 금액 추이</div>
-                <canvas id="dailyTrendChart"></canvas>
-            </div>
-            <div class="card chart-card">
-                <div class="card-title">💳 결제 수단 비율</div>
-                <canvas id="paymentMethodChart"></canvas>
-            </div>
+            <div class="card chart-card"><div class="card-title">📈 거래 금액 추이</div><canvas id="dailyTrendChart"></canvas></div>
+            <div class="card chart-card"><div class="card-title">💳 결제 수단 비율</div><canvas id="paymentMethodChart"></canvas></div>
         </div>
-
-        <!-- 상품 분류 실적 카드 -->
         <div class="card">
             <div class="card-title" style="margin-bottom:25px;">📊 상품 분류별 실적 집계</div>
             <div id="summaryTableContainer"></div>
-            <div style="height: 350px; margin-top: 40px;">
-                <canvas id="topProductsChart"></canvas>
-            </div>
+            <div style="height: 350px; margin-top: 40px;"><canvas id="topProductsChart"></canvas></div>
         </div>
     </div>
 </div>
 
 <script>
-    // [핵심 로직 엔진]
     let MASTER_MAPPING = [];
     let ALLO_MAPPING = {}; 
     let charts = {};
@@ -223,107 +196,65 @@
 
     function saveMapping() { localStorage.setItem('shinan_mapping_master_v4', JSON.stringify(MASTER_MAPPING)); }
     function saveAlloMapping() { localStorage.setItem('shinan_allo_mapping_v3', JSON.stringify(ALLO_MAPPING)); }
-    function resetMapping() { if (confirm('모든 매핑 설정을 초기화할까요?')) { localStorage.removeItem('shinan_mapping_master_v4'); location.reload(); } }
-    function resetAlloMapping() { if (confirm('모든 안분 설정을 초기화할까요?')) { localStorage.removeItem('shinan_allo_mapping_v3'); location.reload(); } }
+    function resetMapping() { if (confirm('초기화할까요?')) { localStorage.removeItem('shinan_mapping_master_v4'); location.reload(); } }
+    function resetAlloMapping() { if (confirm('초기화할까요?')) { localStorage.removeItem('shinan_allo_mapping_v3'); location.reload(); } }
 
     function renderMappingTable() {
         const unTable = document.getElementById('unclassifiedTableBody');
         const msTable = document.getElementById('mappingTableBody');
         const unSection = document.getElementById('unclassifiedSection');
         const unCount = document.getElementById('unclassifiedCount');
-
         const itemsNew = [], itemsReview = [], itemsMaster = [];
         MASTER_MAPPING.forEach((m, i) => {
             const item = { ...m, originalIndex: i };
-            if (m.result === '미분류') {
-                if (m.suggestion) itemsReview.push(item);
-                else itemsNew.push(item);
-            } else itemsMaster.push(item);
+            if (m.result === '미분류') { if (m.suggestion) itemsReview.push(item); else itemsNew.push(item); }
+            else itemsMaster.push(item);
         });
-
         let unHtml = '';
         if (itemsNew.length > 0) {
             unHtml += `<tr style="background:#fee2e2;"><td colspan="3" style="font-weight:900; color:var(--danger); padding:10px;">❓ 완전 신규 상품</td></tr>`;
-            itemsNew.forEach(it => unHtml += `<tr><td>${it.keyword}</td><td><input type="text" class="input-inline" placeholder="지정할 분류명..." onchange="updateMappingResult(${it.originalIndex}, this.value)"></td><td><button class="btn btn-danger" style="padding:2px 8px;" onclick="deleteMappingRule(${it.originalIndex})">&times;</button></td></tr>`);
+            itemsNew.forEach(it => unHtml += `<tr><td>${it.keyword}</td><td><input type="text" class="input-inline" onchange="updateMappingResult(${it.originalIndex}, this.value)"></td><td><button class="btn btn-danger" onclick="deleteMappingRule(${it.originalIndex})">&times;</button></td></tr>`);
         }
         if (itemsReview.length > 0) {
             unHtml += `<tr style="background:#fef3c7;"><td colspan="3" style="font-weight:900; color:#92400e; padding:10px;">🔍 복합 구성 의심</td></tr>`;
-            itemsReview.forEach(it => unHtml += `<tr><td>${it.keyword}<br><small style="color:#666;">기존 '${it.suggestedBy}' 포함됨</small></td><td><div style="display:flex;gap:6px;"><input type="text" class="input-inline" onchange="updateMappingResult(${it.originalIndex}, this.value)"><button class="btn btn-primary" style="padding:4px 8px; font-size:0.7rem; white-space:nowrap;" onclick="updateMappingResult(${it.originalIndex}, '${it.suggestion}')">'${it.suggestion}' 승인</button></div></td><td><button class="btn btn-danger" style="padding:2px 8px;" onclick="deleteMappingRule(${it.originalIndex})">&times;</button></td></tr>`);
+            itemsReview.forEach(it => unHtml += `<tr><td>${it.keyword}<br><small>${it.suggestedBy} 포함</small></td><td><div style="display:flex;gap:6px;"><input type="text" class="input-inline" onchange="updateMappingResult(${it.originalIndex}, this.value)"><button class="btn btn-primary" onclick="updateMappingResult(${it.originalIndex}, '${it.suggestion}')">승인</button></div></td><td><button class="btn btn-danger" onclick="deleteMappingRule(${it.originalIndex})">&times;</button></td></tr>`);
         }
         unTable.innerHTML = unHtml;
         if (itemsNew.length + itemsReview.length > 0) { unSection.classList.remove('hidden'); unCount.innerText = itemsNew.length + itemsReview.length; }
         else unSection.classList.add('hidden');
 
-        const groups = {};
-        itemsMaster.forEach(it => {
-            const prefix = it.keyword.substring(0, 8);
-            const key = `${prefix}_${it.result}`;
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(it);
-        });
-
+        const groups = {}; itemsMaster.forEach(it => { const prefix = it.keyword.substring(0, 8); const key = `${prefix}_${it.result}`; if (!groups[key]) groups[key] = []; groups[key].push(it); });
         let msHtml = '';
         Object.keys(groups).sort().forEach(k => {
-            const group = groups[k];
-            const prefix = group[0].keyword.substring(0, 8);
+            const group = groups[k]; const prefix = group[0].keyword.substring(0, 8);
             if (group.length > 1) {
-                msHtml += `<tr style="background:#f1f5f9; font-weight:900; border-left:5px solid var(--primary);"><td colspan="1">📦 ${prefix}... (${group.length}건)</td><td><input type="text" class="input-inline" style="background:white;" value="${group[0].result}" onchange="updateGroupResult('${prefix}', this.value)"></td><td style="text-align:center;"><button class="btn btn-outline" style="padding:2px 8px;" onclick="toggleGroup('${k}')">📂</button></td></tr>`;
-                if (localStorage.getItem(`group_expand_${k}`) !== 'false') {
-                    group.forEach(it => msHtml += `<tr style="font-size:0.75rem;"><td style="padding-left:30px; color:var(--text-muted);">└ ${it.keyword}</td><td><input type="text" class="input-inline" style="height:28px;" value="${it.result}" onchange="updateMappingResult(${it.originalIndex}, this.value)"></td><td style="text-align:center;"><button class="btn btn-danger" style="padding:2px 8px;" onclick="deleteMappingRule(${it.originalIndex})">&times;</button></td></tr>`);
-                }
-            } else {
-                const it = group[0];
-                msHtml += `<tr><td>${it.keyword}</td><td><input type="text" class="input-inline" value="${it.result}" onchange="updateMappingResult(${it.originalIndex}, this.value)"></td><td style="text-align:center;"><button class="btn btn-danger" style="padding:2px 8px;" onclick="deleteMappingRule(${it.originalIndex})">&times;</button></td></tr>`;
-            }
+                msHtml += `<tr style="background:#f1f5f9; font-weight:900; border-left:5px solid var(--primary);"><td colspan="1">📦 ${prefix}... (${group.length})</td><td><input type="text" class="input-inline" value="${group[0].result}" onchange="updateGroupResult('${prefix}', this.value)"></td><td style="text-align:center;"><button class="btn btn-outline" onclick="toggleGroup('${k}')">📂</button></td></tr>`;
+                if (localStorage.getItem(`group_expand_${k}`) !== 'false') group.forEach(it => msHtml += `<tr style="font-size:0.75rem;"><td style="padding-left:30px;">└ ${it.keyword}</td><td><input type="text" class="input-inline" value="${it.result}" onchange="updateMappingResult(${it.originalIndex}, this.value)"></td><td style="text-align:center;"><button class="btn btn-danger" onclick="deleteMappingRule(${it.originalIndex})">&times;</button></td></tr>`);
+            } else { msHtml += `<tr><td>${group[0].keyword}</td><td><input type="text" class="input-inline" value="${group[0].result}" onchange="updateMappingResult(${group[0].originalIndex}, this.value)"></td><td style="text-align:center;"><button class="btn btn-danger" onclick="deleteMappingRule(${group[0].originalIndex})">&times;</button></td></tr>`; }
         });
-        msTable.innerHTML = msHtml || '<tr><td colspan="3" style="text-align:center; padding:50px; color:var(--text-muted);">아직 등록된 규칙이 없습니다.</td></tr>';
+        msTable.innerHTML = msHtml || '<tr><td colspan="3" style="text-align:center; padding:50px;">등록된 규칙 없음</td></tr>';
     }
 
     function updateMappingResult(idx, val) {
-        const nv = val.trim(); if (!nv) return;
-        const ov = MASTER_MAPPING[idx].result;
-        MASTER_MAPPING[idx].result = nv;
-        MASTER_MAPPING[idx].suggestion = null;
+        const nv = val.trim(); if (!nv) return; const ov = MASTER_MAPPING[idx].result; MASTER_MAPPING[idx].result = nv; MASTER_MAPPING[idx].suggestion = null;
         if (ov !== '미분류' && ALLO_MAPPING[ov]) { ALLO_MAPPING[nv] = ALLO_MAPPING[ov]; delete ALLO_MAPPING[ov]; }
-        saveMapping(); saveAlloMapping(); renderMappingTable(); renderAlloTable();
-        if (currentRawData) processData(currentRawData);
+        saveMapping(); saveAlloMapping(); renderMappingTable(); renderAlloTable(); if (currentRawData) processData(currentRawData);
     }
 
     function updateGroupResult(prefix, val) {
         const nv = val.trim(); if (!nv) return;
-        MASTER_MAPPING.forEach(m => {
-            if (m.keyword.startsWith(prefix)) {
-                const ov = m.result; m.result = nv; m.suggestion = null;
-                if (ov !== '미분류' && ALLO_MAPPING[ov]) { ALLO_MAPPING[nv] = ALLO_MAPPING[ov]; delete ALLO_MAPPING[ov]; }
-            }
-        });
-        saveMapping(); saveAlloMapping(); renderMappingTable(); renderAlloTable();
-        if (currentRawData) processData(currentRawData);
+        MASTER_MAPPING.forEach(m => { if (m.keyword.startsWith(prefix)) { const ov = m.result; m.result = nv; if (ov !== '미분류' && ALLO_MAPPING[ov]) { ALLO_MAPPING[nv] = ALLO_MAPPING[ov]; delete ALLO_MAPPING[ov]; } } });
+        saveMapping(); saveAlloMapping(); renderMappingTable(); renderAlloTable(); if (currentRawData) processData(currentRawData);
     }
 
     function addMappingRule() {
-        const kw = document.getElementById('newKeyword').value.trim();
-        const rs = document.getElementById('newResult').value.trim() || '미분류';
-        if (!kw) return;
-        MASTER_MAPPING.unshift({ keyword: kw, result: rs });
-        document.getElementById('newKeyword').value = ''; document.getElementById('newResult').value = '';
-        saveMapping(); renderMappingTable(); renderAlloTable();
-        if (currentRawData) processData(currentRawData);
+        const kw = document.getElementById('newKeyword').value.trim(); const rs = document.getElementById('newResult').value.trim() || '미분류';
+        if (!kw) return; MASTER_MAPPING.unshift({ keyword: kw, result: rs }); document.getElementById('newKeyword').value = ''; document.getElementById('newResult').value = '';
+        saveMapping(); renderMappingTable(); renderAlloTable(); if (currentRawData) processData(currentRawData);
     }
 
-    function deleteMappingRule(idx) {
-        if (confirm('규칙을 삭제할까요?')) {
-            MASTER_MAPPING.splice(idx, 1);
-            saveMapping(); renderMappingTable(); renderAlloTable();
-            if (currentRawData) processData(currentRawData);
-        }
-    }
-
-    function toggleGroup(k) {
-        const cur = localStorage.getItem(`group_expand_${k}`) !== 'false';
-        localStorage.setItem(`group_expand_${k}`, !cur);
-        renderMappingTable();
-    }
+    function deleteMappingRule(idx) { if (confirm('삭제할까요?')) { MASTER_MAPPING.splice(idx, 1); saveMapping(); renderMappingTable(); renderAlloTable(); if (currentRawData) processData(currentRawData); } }
+    function toggleGroup(k) { const cur = localStorage.getItem(`group_expand_${k}`) !== 'false'; localStorage.setItem(`group_expand_${k}`, !cur); renderMappingTable(); }
 
     function renderAlloTable() {
         const tbody = document.getElementById('alloTableBody'); if (!tbody) return;
@@ -331,66 +262,46 @@
         let html = '';
         categories.forEach(cat => {
             if (!ALLO_MAPPING[cat]) ALLO_MAPPING[cat] = { basePrice: 0, items: Array(6).fill(0).map(() => ({ target:'', price:0, rate:0 })) };
-            const data = ALLO_MAPPING[cat];
-            let rowSum = 0; data.items.forEach(it => rowSum += Math.round(it.rate || 0));
+            const data = ALLO_MAPPING[cat]; let rowSum = 0; data.items.forEach(it => rowSum += Math.round(it.rate || 0));
             html += `<tr>
-                <td style="font-weight:900; color:var(--primary); position:sticky; left:0; background:white; z-index:5; border-right:2px solid var(--border);">${cat}</td>
-                <td style="background:#fff;"><input type="number" class="input-inline" style="text-align:right; font-weight:900; color:var(--primary);" value="${data.basePrice}" onchange="updateAlloBasePrice('${cat}', this.value)"></td>
-                <td>
-                    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
-                        ${data.items.map((it, i) => `
-                            <div style="background:white; padding:10px; border-radius:10px; border:1.5px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                                <input type="text" class="input-inline" style="margin-bottom:6px; font-weight:700;" value="${it.target}" onchange="updateAlloItem('${cat}',${i},'target',this.value)" placeholder="업장명">
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <input type="number" class="input-inline" style="flex:1; text-align:right; font-weight:800;" value="${it.price}" onchange="updateAlloItemPrice('${cat}',${i},this.value)">
-                                    <span class="badge badge-info">${Math.round(it.rate)}%</span>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </td>
-                <td style="text-align:center; background:#fffde7; font-weight:900; color:${rowSum===100?'var(--success)':'var(--danger)'}; font-size:1.1rem; border-radius:0 10px 10px 0;">${rowSum}%</td>
+                <td style="font-weight:900; color:var(--primary); position:sticky; left:0; background:white; border-right:2px solid var(--border);">${cat}</td>
+                <td><input type="number" class="input-inline" style="text-align:right;" value="${data.basePrice}" onchange="updateAlloBasePrice('${cat}', this.value)"></td>
+                <td><div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+                    ${data.items.map((it, i) => `<div style="background:white; padding:8px; border-radius:8px; border:1px solid var(--border);">
+                        <input type="text" class="input-inline" style="margin-bottom:4px;" value="${it.target}" onchange="updateAlloItem('${cat}',${i},'target',this.value)" placeholder="업장">
+                        <div style="display:flex; align-items:center; gap:4px;"><input type="number" class="input-inline" style="flex:1; text-align:right;" value="${it.price}" onchange="updateAlloItemPrice('${cat}',${i},this.value)"><span class="badge badge-info">${Math.round(it.rate)}%</span></div>
+                    </div>`).join('')}
+                </div></td>
+                <td style="text-align:center; background:#fffde7; font-weight:900; color:${rowSum===100?'var(--success)':'var(--danger)'};">${rowSum}%</td>
             </tr>`;
         });
-        tbody.innerHTML = html || '<tr><td colspan="4" style="text-align:center; padding:60px; color:var(--text-muted);">상품 매핑을 먼저 진행해주세요.</td></tr>';
+        tbody.innerHTML = html || '<tr><td colspan="4" style="text-align:center; padding:40px;">매핑 규칙을 등록하세요.</td></tr>';
         saveAlloMapping();
     }
 
-    function updateAlloBasePrice(cat, v) {
-        const b = parseFloat(v) || 0; ALLO_MAPPING[cat].basePrice = b;
-        ALLO_MAPPING[cat].items.forEach(it => it.rate = b > 0 ? (it.price/b)*100 : 0);
-        renderAlloTable();
-    }
+    function updateAlloBasePrice(cat, v) { const b = parseFloat(v) || 0; ALLO_MAPPING[cat].basePrice = b; ALLO_MAPPING[cat].items.forEach(it => it.rate = b > 0 ? (it.price/b)*100 : 0); renderAlloTable(); }
     function updateAlloItem(cat, i, f, v) { ALLO_MAPPING[cat].items[i][f] = v; saveAlloMapping(); }
     function updateAlloItemPrice(cat, i, v) {
         const p = parseFloat(v) || 0; const b = ALLO_MAPPING[cat].basePrice || 0;
         const curSum = ALLO_MAPPING[cat].items.reduce((s, it, idx) => idx === i ? s : s + (it.price || 0), 0);
-        if (b > 0 && (curSum + p) > b) return alert('기준 최저가를 초과할 수 없습니다.');
-        ALLO_MAPPING[cat].items[i].price = p;
-        if (b > 0) ALLO_MAPPING[cat].items[i].rate = (p/b)*100;
-        renderAlloTable();
+        if (b > 0 && (curSum + p) > b) return alert('최저가를 초과할 수 없습니다.');
+        ALLO_MAPPING[cat].items[i].price = p; if (b > 0) ALLO_MAPPING[cat].items[i].rate = (p/b)*100; renderAlloTable();
     }
 
-    // 파일 로딩
-    const fileInput = document.getElementById('fileInput');
-    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput'), dropZone = document.getElementById('dropZone');
     dropZone.ondragover = (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--success)'; dropZone.style.background = '#f0fdf4'; };
     dropZone.ondragleave = () => { dropZone.style.borderColor = 'var(--primary)'; dropZone.style.background = 'var(--primary-light)'; };
     dropZone.ondrop = (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; dropZone.style.background = 'var(--primary-light)'; if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); };
     fileInput.onchange = (e) => { if(e.target.files.length) handleFile(e.target.files[0]); };
 
     function handleFile(file) {
-        const reader = new FileReader();
-        reader.onload = (evt) => {
+        const reader = new FileReader(); reader.onload = (evt) => {
             try {
                 const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array', cellDates: true });
                 const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
-                detectNewProducts(jsonData);
-                currentRawData = jsonData;
-                processData(jsonData);
-            } catch (err) { alert('파일을 읽는 중 오류가 발생했습니다: ' + err.message); }
-        };
-        reader.readAsArrayBuffer(file);
+                detectNewProducts(jsonData); currentRawData = jsonData; processData(jsonData);
+            } catch (err) { alert('파일 읽기 오류: ' + err.message); }
+        }; reader.readAsArrayBuffer(file);
     }
 
     function detectNewProducts(data) {
@@ -400,18 +311,8 @@
             const pName = (getVal(row, ['상품명']) || '').trim(); if (!pName) return;
             let best = null; for (let m of sortedMapping) { if (pName.toLowerCase().includes(m.keyword.trim().toLowerCase())) { best = m; break; } }
             const ind = ['+', '&', '/', 'pkg', '렌탈', '패키지', '포함', '조식', '석식', '락커', '장비'];
-            if (best) {
-                const hasNew = ind.some(i => pName.toLowerCase().includes(i) && !best.keyword.toLowerCase().includes(i));
-                if (hasNew || pName.length - best.keyword.length > 10) {
-                    if (!MASTER_MAPPING.some(m => m.keyword === pName)) {
-                        MASTER_MAPPING.unshift({ keyword: pName, result: '미분류', suggestion: best.result, suggestedBy: best.keyword });
-                    }
-                }
-            } else {
-                if (!MASTER_MAPPING.some(m => m.keyword.toLowerCase() === pName.toLowerCase())) {
-                    MASTER_MAPPING.unshift({ keyword: pName, result: '미분류' });
-                }
-            }
+            if (best) { if (ind.some(i => pName.toLowerCase().includes(i) && !best.keyword.toLowerCase().includes(i)) || pName.length - best.keyword.length > 10) { if (!MASTER_MAPPING.some(m => m.keyword === pName)) MASTER_MAPPING.unshift({ keyword: pName, result: '미분류', suggestion: best.result, suggestedBy: best.keyword }); } }
+            else { if (!MASTER_MAPPING.some(m => m.keyword.toLowerCase() === pName.toLowerCase())) MASTER_MAPPING.unshift({ keyword: pName, result: '미분류' }); }
         });
         saveMapping(); renderMappingTable();
     }
@@ -422,82 +323,89 @@
     function processData(data) {
         const filtered = data.filter(r => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(r, ['MID']).toString()));
         if (filtered.length === 0) return alert('분석할 데이터가 없습니다.');
-        let gross=0, net=0, fee=0, cAmt=0;
-        const daily={}, methods={}, products={};
+        let gross=0, net=0, fee=0, cAmt=0; const daily={}, methods={}, products={};
         const sortedMapping = [...MASTER_MAPPING].sort((a,b) => b.keyword.length - a.keyword.length);
         filtered.forEach(r => {
-            const a = parseMoney(getVal(r, ['거래금액', '결제금액']));
-            const n = parseMoney(getVal(r, ['정산금액', '지급금액']));
-            const f = parseMoney(getVal(r, ['결제수수료', '수수료'])) + parseMoney(getVal(r, ['VAT', '부가세']));
-            const p = (getVal(r, ['상품명']) || '미지정').trim();
-            const dVal = getVal(r, ['정산일', '거래일자']).toString();
+            const a = parseMoney(getVal(r, ['거래금액', '결제금액'])), n = parseMoney(getVal(r, ['정산금액', '지급금액'])), f = parseMoney(getVal(r, ['결제수수료', '수수료'])) + parseMoney(getVal(r, ['VAT', '부가세']));
+            const p = (getVal(r, ['상품명']) || '미지정').trim(), dVal = getVal(r, ['정산일', '거래일자']).toString();
             let dKey = '기타'; const m = dVal.match(/(\d{4})[-.\/]?(0[1-9]|1[0-2])[-.\/]?(0[1-9]|[12][0-9]|3[01])/); if (m) dKey = `${m[1]}-${m[2]}-${m[3]}`;
-            gross+=a; net+=n; fee+=f; if (a<0) cAmt+=Math.abs(a);
-            daily[dKey] = (daily[dKey]||0)+a;
+            gross+=a; net+=n; fee+=f; if (a<0) cAmt+=Math.abs(a); daily[dKey] = (daily[dKey]||0)+a;
             const pm = getVal(r, ['결제 서비스명', '결제수단']) || '기타'; methods[pm] = (methods[pm]||0)+a;
             let cat = '미분류'; for (let item of sortedMapping) { if (p.toLowerCase().includes(item.keyword.trim().toLowerCase())) { cat = item.result; break; } }
             if (!products[cat]) products[cat] = { count:0, amt:0 }; products[cat].count++; products[cat].amt += a;
         });
-
-        document.getElementById('statsGrid').innerHTML = `
-            <div class="stat-card"><h4>총 거래 금액</h4><div class="value">${gross.toLocaleString()}원</div></div>
-            <div class="stat-card success"><h4>순 정산 예정액</h4><div class="value">${net.toLocaleString()}원</div></div>
-            <div class="stat-card warning"><h4>실질 수수료 (VAT포함)</h4><div class="value">${fee.toLocaleString()}원</div></div>
-            <div class="stat-card danger"><h4>취소 및 환불</h4><div class="value">${cAmt.toLocaleString()}원</div></div>
-        `;
-
-        let tb = `<table class="summary-table"><thead><tr><th>상품 분류</th><th>결제 건수</th><th>총 거래 금액</th><th>매출 비중</th></tr></thead><tbody>`;
+        document.getElementById('statsGrid').innerHTML = `<div class="stat-card"><h4>총 거래 금액</h4><div class="value">${gross.toLocaleString()}원</div></div><div class="stat-card success"><h4>순 정산 예정액</h4><div class="value">${net.toLocaleString()}원</div></div><div class="stat-card warning"><h4>실질 수수료</h4><div class="value">${fee.toLocaleString()}원</div></div><div class="stat-card danger"><h4>취소 및 환불</h4><div class="value">${cAmt.toLocaleString()}원</div></div>`;
+        let tb = `<table class="summary-table"><thead><tr><th>분류</th><th>건수</th><th>총 금액</th><th>비중</th></tr></thead><tbody>`;
         Object.entries(products).sort((a,b)=>b[1].amt - a[1].amt).forEach(([c, d]) => { tb += `<tr><td><strong>${c}</strong></td><td>${d.count.toLocaleString()}건</td><td style="font-weight:800;">${d.amt.toLocaleString()}원</td><td><span class="badge badge-info">${((d.amt/gross)*100).toFixed(1)}%</span></td></tr>`; });
         document.getElementById('summaryTableContainer').innerHTML = tb + `</tbody></table>`;
-        renderCharts(daily, methods, products);
-        document.getElementById('dashboardContent').classList.remove('hidden');
+        renderCharts(daily, methods, products); document.getElementById('dashboardContent').classList.remove('hidden');
         const sD = Object.keys(daily).sort(); document.getElementById('reportTitle').innerText = `📊 분석 데이터 리포트 (${sD[0]} ~ ${sD[sD.length-1]})`;
     }
 
     async function exportConfigToExcel() {
         const wb = new ExcelJS.Workbook();
-        const s1 = wb.addWorksheet('매핑설정'); s1.columns = [{header:'키워드',key:'keyword',width:40},{header:'결과분류',key:'result',width:30}]; MASTER_MAPPING.forEach(m=>s1.addRow(m));
-        const s2 = wb.addWorksheet('알로안분'); const cols = [{header:'분류명',key:'cat',width:20},{header:'최저가',key:'base',width:15}]; for(let i=1;i<=6;i++){cols.push({header:`업장${i}`,key:`t${i}`,width:15},{header:`금액${i}`,key:`p${i}`,width:12});} s2.columns=cols;
+        const s1 = wb.addWorksheet('매핑설정'); s1.columns = [{header:'keyword',key:'keyword',width:40},{header:'result',key:'result',width:30}]; MASTER_MAPPING.forEach(m=>s1.addRow(m));
+        const s2 = wb.addWorksheet('알로안분'); const cols = [{header:'cat',key:'cat',width:20},{header:'base',key:'base',width:15}]; for(let i=1;i<=6;i++){cols.push({header:`t${i}`,key:`t${i}`,width:15},{header:`p${i}`,key:`p${i}`,width:12});} s2.columns=cols;
         Object.entries(ALLO_MAPPING).forEach(([c,d])=>{const r={cat:c,base:d.basePrice}; d.items.forEach((it,i)=>{r[`t${i+1}`]=it.target;r[`p${i+1}`]=it.price;}); s2.addRow(r);});
-        const b = await wb.xlsx.writeBuffer(); const l=document.createElement('a'); l.href=URL.createObjectURL(new Blob([b])); l.download=`정산_백업설정.xlsx`; l.click();
+        const b = await wb.xlsx.writeBuffer(); const l=document.createElement('a'); l.href=URL.createObjectURL(new Blob([b])); l.download=`정산_설정백업.xlsx`; l.click();
     }
 
     function importConfigFromExcel(input) {
         const r = new FileReader(); r.onload=async(e)=>{
             const wb=new ExcelJS.Workbook(); await wb.xlsx.load(e.target.result);
-            const nM=[], nA={}; 
-            const s1=wb.getWorksheet('매핑설정'); if(s1) s1.eachRow((row,i)=>{if(i>1&&row.getCell(1).text)nM.push({keyword:row.getCell(1).text.trim(),result:row.getCell(2).text.trim()||'미분류'});});
-            const s2=wb.getWorksheet('알로안분'); if(s2) s2.eachRow((row,i)=>{if(i>1&&row.getCell(1).text){const c=row.getCell(1).text.trim(), b=parseFloat(row.getCell(2).value)||0, its=[]; for(let j=0;j<6;j++){const t=row.getCell(3+j*2).text.trim(), p=parseFloat(row.getCell(4+j*2).value)||0; its.push({target:t,price:p,rate:b>0?(p/b)*100:0});} nA[c]={basePrice:b,items:its};}});
-            if(confirm('새로운 설정을 덮어씌울까요?')) { MASTER_MAPPING=nM; ALLO_MAPPING=nA; saveMapping(); saveAlloMapping(); renderMappingTable(); renderAlloTable(); alert('설정 업데이트 완료'); }
+            const nM=[], nA={}; const s1=wb.getWorksheet('매핑설정'), s2=wb.getWorksheet('알로안분');
+            if(s1) s1.eachRow((row,i)=>{if(i>1&&row.getCell(1).text)nM.push({keyword:row.getCell(1).text.trim(),result:row.getCell(2).text.trim()||'미분류'});});
+            if(s2) s2.eachRow((row,i)=>{if(i>1&&row.getCell(1).text){const c=row.getCell(1).text.trim(), b=parseFloat(row.getCell(2).value)||0, its=[]; for(let j=0;j<6;j++){const t=row.getCell(3+j*2).text.trim(), p=parseFloat(row.getCell(4+j*2).value)||0; its.push({target:t,price:p,rate:b>0?(p/b)*100:0});} nA[c]={basePrice:b,items:its};}});
+            if(confirm('덮어씌울까요?')) { MASTER_MAPPING=nM; ALLO_MAPPING=nA; saveMapping(); saveAlloMapping(); renderMappingTable(); renderAlloTable(); }
         }; r.readAsArrayBuffer(input.files[0]);
     }
 
     async function exportToProcessedFormat() {
         try {
-            const wb = new ExcelJS.Workbook(); const raw = currentRawData.filter(r => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(r, ['MID']).toString()));
+            const wb = new ExcelJS.Workbook();
+            const raw = currentRawData.filter(r => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(r, ['MID']).toString()));
+            const pal = ['FFE2EFDA', 'FFD9E1F2', 'FFFFF2CC', 'FFFCE4D6', 'FFE1D5E7', 'FFD5E8D4', 'FFF8CECC'];
+            const resC = { '미분류': {bg:'FFFF0000',fg:'FFFFFFFF'}};
+            [...new Set(MASTER_MAPPING.map(m=>m.result))].forEach((res, i) => { if (!resC[res]) resC[res] = { bg: pal[i % pal.length], fg: 'FF333333' }; });
+
+            const ms = wb.addWorksheet('매핑데이터', { views: [{ showGridLines: false }] });
+            ms.getCell('B2').value = '⚙️ 상품 매핑 규칙 마스터'; ms.getCell('B2').font = { size: 14, bold: true, color: { argb: 'FF4E73DF' } };
+            ms.getCell('C5').value = '검색 키워드'; ms.getCell('D5').value = '최종 분류 결과';
+            ['C', 'D'].forEach(col => { const c = ms.getCell(`${col}5`); c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4E73DF' } }; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; });
+            MASTER_MAPPING.slice().sort((a,b)=>a.keyword.length-b.keyword.length).forEach((m,i)=>{ const r=i+6; ms.getCell(`C${r}`).value=m.keyword; ms.getCell(`D${r}`).value=m.result; ['C','D'].forEach(c=>ms.getCell(`${c}${r}`).border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}}); });
+            ms.getColumn('C').width=40; ms.getColumn('D').width=30;
+
             const grouped = {}; raw.forEach(r => { const d=getVal(r,['정산일','거래일자']).toString(), m=d.match(/(\d{4})[-.\/]?(0[1-9]|1[0-2])[-.\/]?(0[1-9]|[12][0-9]|3[01])/), day=m?`${m[2]}월${m[3]}일`:'기타'; if(!grouped[day])grouped[day]=[]; grouped[day].push(r); });
-            const ms = wb.addWorksheet('매핑데이터'); ms.getCell('B2').value='⚙️ 상품 매핑 규칙'; MASTER_MAPPING.slice().sort((a,b)=>a.keyword.length-b.keyword.length).forEach((m,i)=>{const r=i+6; ms.getCell(`C${r}`).value=m.keyword; ms.getCell(`D${r}`).value=m.result;});
             for (const [date, rows] of Object.entries(grouped).sort()) {
-                const s = wb.addWorksheet(date); s.columns = [{width:6},{width:15},{width:12},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:13},{width:11},{width:10,hidden:true},{width:10,hidden:true},{width:11},{width:12,hidden:true},{width:16},{width:12,hidden:true},{width:15,hidden:true},{width:11},{width:32},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:16},{width:13},{width:13}];
-                const h = s.getRow(3); h.values = ['NO.','결제 서비스명','정산일','승인일','매입요청일','취소일','상 호','MID','거래금액','결제수수료','에스크로수수료','인증수수료','VAT','정산금액','카드사','승인번호','주문번호','구매자','상품명','거래구분','TID','상태','원TID','변환결과(X)','정산금액(Y)','수수료+VAT(Z)'];
-                rows.forEach((r,i)=>{
+                const s = wb.addWorksheet(date, { views: [{ zoomScale: 90 }] });
+                s.columns = [{width:6},{width:15},{width:12},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:13},{width:11},{width:10,hidden:true},{width:10,hidden:true},{width:11},{width:12,hidden:true},{width:16},{width:12,hidden:true},{width:15,hidden:true},{width:11},{width:32},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:16},{width:13},{width:13}];
+                const hR = s.getRow(3); hR.values = ['NO.', '결제 서비스명', '정산일', '승인일', '매입요청일', '취소일', '상 호', 'MID', '거래금액', '결제수수료', '에스크로수수료', '인증수수료', 'VAT', '정산금액', '카드사', '승인번호', '주문번호', '구매자', '상품명', '거래구분', 'TID', '상태', '원TID', '변환결과(X)', '정산금액(Y)', '수수료+VAT(Z)'];
+                hR.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } }; c.font = { bold: true, size: 9 }; c.alignment = { horizontal: 'center' }; c.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; });
+                const hit = {}; const sm = [...MASTER_MAPPING].sort((a,b)=>b.keyword.length-a.keyword.length);
+                rows.forEach((r, i) => {
                     const ri=i+4, row=s.getRow(ri), p=(getVal(r,['상품명'])||'').trim(), a=parseMoney(getVal(r,['거래금액','결제금액']));
                     row.getCell(1).value=i+1; row.getCell(2).value=getVal(r,['결제 서비스명']); row.getCell(3).value=getVal(r,['정산일']); row.getCell(9).value=a; row.getCell(10).value=parseMoney(getVal(r,['결제수수료'])); row.getCell(13).value=parseMoney(getVal(r,['VAT'])); row.getCell(14).value=parseMoney(getVal(r,['정산금액'])); row.getCell(15).value=getVal(r,['카드사']); row.getCell(18).value=getVal(r,['구매자']); row.getCell(19).value=p;
                     row.getCell(24).value={formula:`IFERROR(LOOKUP(1,0/(FIND(UPPER(매핑데이터!$C$6:$C$5000),UPPER(S${ri}))*(매핑데이터!$C$6:$C$5000<>"")),매핑데이터!$D$6:$D$5000),"미분류")`};
                     row.getCell(25).value={formula:`N${ri}`}; row.getCell(26).value={formula:`J${ri}+M${ri}`};
+                    let cat='미분류'; for(let it of sm){if(p.toLowerCase().includes(it.keyword.trim().toLowerCase())){cat=it.result;break;}} hit[cat]=true;
+                    row.eachCell((cell, col) => { if(col<=26){cell.border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}}; cell.font={size:9}; if([9,10,13,25,26].includes(col)){cell.numFmt='#,##0';}} });
                 });
+                const endR = rows.length+3; s.addConditionalFormatting({ ref: `X4:X${endR}`, rules: Object.entries(resC).map(([res, st]) => ({ type: 'cellIs', operator: 'equal', formulae: [`"${res}"`], style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: st.bg } }, font: { color: { argb: st.fg } } } })) });
+                const sumR = endR+2; s.mergeCells(sumR,1,sumR,3); s.getCell(sumR,1).value='합계'; [9,10,13,25,26].forEach(c => { const L={9:'I',10:'J',13:'M',25:'Y',26:'Z'}[c]; s.getCell(sumR,c).value={formula:`SUM(${L}4:${L}${endR})`}; s.getCell(sumR,c).numFmt='#,##0'; s.getCell(sumR,c).font={bold:true}; });
+                const dbS = sumR+2; const merges = [[2,3], [4,5], [6,9], [10,13], [14,17], [18,21], [22,25]]; const labels = ['구분','건수','금액','수수료','VAT','정산액','수수료+VAT'];
+                merges.forEach((m, i) => { s.mergeCells(dbS, m[0], dbS, m[1]); const c = s.getCell(dbS, m[0]); c.value = labels[i]; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4E73DF' } }; c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 }; c.alignment = { horizontal: 'center' }; c.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} }; });
+                let curR = dbS + 1; Object.keys(hit).forEach(res => { merges.forEach((m, j) => { s.mergeCells(curR, m[0], curR, m[1]); const cell = s.getCell(curR, m[0]); if(j===0) cell.value=res; else if(j===1) cell.value={formula:`COUNTIF($X$4:$X$${endR}, B${curR})`}; else { const L=['I','J','M','Y','Z'][j-2]; cell.value={formula:`SUMIF($X$4:$X$${endR}, B${curR}, $${L}$4:$${L}$${endR})`}; } cell.border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}}; if(j>=2) cell.numFmt='#,##0'; }); curR++; });
             }
-            const b = await wb.xlsx.writeBuffer(); const l=document.createElement('a'); l.href=URL.createObjectURL(new Blob([b])); l.download=`정산가공_${new Date().toISOString().slice(0,10)}.xlsx`; l.click();
-        } catch (e) { alert('다운로드 오류: ' + e.message); }
+            const b = await wb.xlsx.writeBuffer(); const l=document.createElement('a'); l.href=URL.createObjectURL(new Blob([b])); l.download=`통합정산가공_${new Date().toISOString().slice(0,10)}.xlsx`; l.click();
+        } catch (e) { alert(e.message); }
     }
 
     function renderCharts(d, m, p) {
-        Object.values(charts).forEach(c => c.destroy());
-        const k = Object.keys(d).sort();
-        charts.daily = new Chart(document.getElementById('dailyTrendChart'), { type:'line', data:{labels:k.map(x=>x.substring(5)), datasets:[{label:'매출',data:k.map(x=>d[x]),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,0.1)',fill:true,tension:0.4,pointRadius:5,pointHoverRadius:8}]}, options:{maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{callback:v=>v.toLocaleString()+'원'}}}}});
-        charts.method = new Chart(document.getElementById('paymentMethodChart'), { type:'doughnut', data:{labels:Object.keys(m), datasets:[{data:Object.values(m),backgroundColor:['#2563eb','#10b981','#f59e0b','#ef4444','#6366f1'],hoverOffset:15}]}, options:{maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}}});
+        Object.values(charts).forEach(c => c.destroy()); const k = Object.keys(d).sort();
+        charts.daily = new Chart(document.getElementById('dailyTrendChart'), { type:'line', data:{labels:k.map(x=>x.substring(5)), datasets:[{label:'매출',data:k.map(x=>d[x]),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,0.1)',fill:true,tension:0.4}]}, options:{maintainAspectRatio:false}});
+        charts.method = new Chart(document.getElementById('paymentMethodChart'), { type:'doughnut', data:{labels:Object.keys(m), datasets:[{data:Object.values(m),backgroundColor:['#2563eb','#10b981','#f59e0b','#ef4444','#6366f1']}]}, options:{maintainAspectRatio:false}});
         const pd = Object.entries(p).sort((a,b)=>b[1].amt-a[1].amt);
-        charts.product = new Chart(document.getElementById('topProductsChart'), { type:'bar', data:{labels:pd.map(x=>x[0]), datasets:[{label:'매출액',data:pd.map(x=>x[1].amt),backgroundColor:'#2563eb',borderRadius:10,barThickness:30}]}, options:{indexAxis:'y',maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{callback:v=>v.toLocaleString()+'원'}}}}});
+        charts.product = new Chart(document.getElementById('topProductsChart'), { type:'bar', data:{labels:pd.map(x=>x[0]), datasets:[{label:'매출액',data:pd.map(x=>x[1].amt),backgroundColor:'#2563eb',borderRadius:10}]}, options:{indexAxis:'y',maintainAspectRatio:false}});
     }
 
     window.onload = init;
