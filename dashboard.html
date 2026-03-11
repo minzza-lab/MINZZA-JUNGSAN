@@ -198,6 +198,32 @@
     function resetMapping() { if (confirm('초기화하시겠습니까?')) { localStorage.removeItem('shinan_mapping_master_v4'); location.reload(); } }
     function resetAlloMapping() { if (confirm('안분 설정을 초기화하시겠습니까?')) { localStorage.removeItem('shinan_allo_mapping_v3'); location.reload(); } }
 
+    function updateMappingResult(index, val) {
+        const newVal = val.trim();
+        if (!newVal) return;
+        MASTER_MAPPING[index].result = newVal;
+        MASTER_MAPPING[index].suggestion = null; // 제안 상태 해제
+        saveMapping();
+        renderMappingTable();
+        if (currentRawData) processData(currentRawData);
+    }
+
+    function updateGroupResult(prefix, val) {
+        const newVal = val.trim();
+        if (!newVal) return;
+        let count = 0;
+        MASTER_MAPPING.forEach(m => {
+            if (m.keyword.startsWith(prefix)) {
+                m.result = newVal;
+                m.suggestion = null;
+                count++;
+            }
+        });
+        saveMapping();
+        renderMappingTable();
+        if (currentRawData) processData(currentRawData);
+    }
+
     function renderAlloTable() {
         const tbody = document.getElementById('alloTableBody');
         if (!tbody) return;
