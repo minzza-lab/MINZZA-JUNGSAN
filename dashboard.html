@@ -110,26 +110,26 @@
     </div>
 
     <!-- 알로 안분율 관리 패널 -->
-    <div class="mapping-panel" style="border-top-color: var(--info); margin-top: 20px;">
+    <div class="mapping-panel" style="border-top-color: var(--info); margin-top: 20px; padding: 15px;">
         <div class="mapping-header">
-            <h2 style="margin:0; font-size: 1.2rem; color: #2c3e50;">🧩 알로 수수료 안분 관리</h2>
-            <button class="btn-small" onclick="resetAlloMapping()" style="color: var(--danger);">🗑️ 안분 초기화</button>
+            <h2 style="margin:0; font-size: 1.1rem; color: #2c3e50;">🧩 알로 수수료 안분 관리</h2>
+            <button class="btn-small" onclick="resetAlloMapping()" style="color: var(--danger); padding: 4px 8px;">🗑️ 초기화</button>
         </div>
-        <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">※ 최저가와 업장별 배정금액을 입력하면 안분율(%)이 자동 계산됩니다. (최대 6개)</p>
+        <p style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">※ 배정금액 합계는 최저가를 초과할 수 없으며, 안분율은 정수로 표시됩니다.</p>
         
-        <div class="mapping-table-wrapper" style="max-height: 600px; overflow-x: auto;">
-            <table class="mapping-table" style="min-width: 1600px;">
+        <div class="mapping-table-wrapper" style="max-height: 500px; overflow-x: auto;">
+            <table class="mapping-table" style="min-width: 1100px; font-size: 0.85rem;">
                 <thead>
                     <tr style="background: #f0faff;">
-                        <th style="width: 150px; position: sticky; left: 0; background: #f0faff; z-index: 11; border-right: 1px solid #e3e6f0;">상품 분류 (Master)</th>
-                        <th style="width: 120px; background: #eef2ff;">최저가(기준)</th>
-                        <th>안분 1 (업장 / 금액)</th>
-                        <th>안분 2 (업장 / 금액)</th>
-                        <th>안분 3 (업장 / 금액)</th>
-                        <th>안분 4 (업장 / 금액)</th>
-                        <th>안분 5 (업장 / 금액)</th>
-                        <th>안분 6 (업장 / 금액)</th>
-                        <th style="width: 100px; text-align: center; background: #fffde7; font-weight: bold;">안분율 합계</th>
+                        <th style="width: 130px; position: sticky; left: 0; background: #f0faff; z-index: 11; border-right: 1px solid #e3e6f0;">상품 분류</th>
+                        <th style="width: 100px; background: #eef2ff;">최저가(기준)</th>
+                        <th>안분 1</th>
+                        <th>안분 2</th>
+                        <th>안분 3</th>
+                        <th>안분 4</th>
+                        <th>안분 5</th>
+                        <th>안분 6</th>
+                        <th style="width: 80px; text-align: center; background: #fffde7; font-weight: bold;">합계</th>
                     </tr>
                 </thead>
                 <tbody id="alloTableBody"></tbody>
@@ -204,29 +204,29 @@
             
             const data = ALLO_MAPPING[cat];
             let rowSum = 0;
-            data.items.forEach(it => rowSum += (parseFloat(it.rate) || 0));
+            data.items.forEach(it => rowSum += (Math.round(it.rate) || 0));
 
             html += `<tr>
-                <td style="font-weight: bold; color: var(--primary); position: sticky; left: 0; background: white; z-index: 5; border-right: 2px solid #e3e6f0;">${cat}</td>
+                <td style="font-weight: bold; color: var(--primary); position: sticky; left: 0; background: white; z-index: 5; border-right: 1px solid #e3e6f0; font-size: 0.8rem;">${cat}</td>
                 <td style="background: #fbfbff;">
-                    <input type="number" class="input-inline" style="font-weight: bold; text-align: right;" value="${data.basePrice || 0}" 
-                           onchange="updateAlloBasePrice('${cat}', this.value)" placeholder="기준가">
+                    <input type="number" class="input-inline" style="font-weight: bold; text-align: right; font-size: 0.8rem;" value="${data.basePrice || 0}" 
+                           onchange="updateAlloBasePrice('${cat}', this.value)" placeholder="0">
                 </td>
                 ${data.items.map((it, i) => `
-                    <td>
-                        <div style="display: flex; flex-direction: column; gap: 5px;">
-                            <input type="text" class="input-inline" value="${it.target || ''}" 
+                    <td style="padding: 4px;">
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <input type="text" class="input-inline" style="font-size: 0.75rem; padding: 2px 5px;" value="${it.target || ''}" 
                                    onchange="updateAlloItem('${cat}', ${i}, 'target', this.value)" placeholder="업장명">
-                            <div style="display: flex; align-items: center; gap: 4px;">
-                                <input type="number" class="input-inline" style="flex: 1.5; text-align: right;" value="${it.price || 0}" 
+                            <div style="display: flex; align-items: center; gap: 2px;">
+                                <input type="number" class="input-inline" style="flex: 1; text-align: right; font-size: 0.75rem; padding: 2px 5px;" value="${it.price || 0}" 
                                        onchange="updateAlloItemPrice('${cat}', ${i}, this.value)" placeholder="금액">
-                                <span style="font-size: 0.75rem; color: #666; min-width: 45px;">${(it.rate || 0).toFixed(1)}%</span>
+                                <span style="font-size: 0.7rem; color: #444; min-width: 30px; text-align: right; font-weight: bold;">${Math.round(it.rate || 0)}%</span>
                             </div>
                         </div>
                     </td>
                 `).join('')}
-                <td style="text-align: center; background: #fffde7; font-weight: bold; color: ${Math.abs(rowSum - 100) < 0.1 ? 'var(--success)' : 'var(--danger)'};">
-                    ${rowSum.toFixed(1)}%
+                <td style="text-align: center; background: #fffde7; font-weight: bold; font-size: 0.8rem; color: ${rowSum === 100 ? 'var(--success)' : (rowSum > 100 ? 'var(--danger)' : '#666')};">
+                    ${rowSum}%
                 </td>
             </tr>`;
         });
@@ -239,7 +239,7 @@
         const base = parseFloat(val) || 0;
         ALLO_MAPPING[cat].basePrice = base;
         ALLO_MAPPING[cat].items.forEach(it => {
-            if (base > 0) it.rate = (it.price / base) * 100;
+            if (base > 0) it.rate = Math.round((it.price / base) * 100);
             else it.rate = 0;
         });
         renderAlloTable();
@@ -253,9 +253,18 @@
     function updateAlloItemPrice(cat, index, val) {
         const p = parseFloat(val) || 0;
         const base = ALLO_MAPPING[cat].basePrice || 0;
+        
+        const currentSumExceptThis = ALLO_MAPPING[cat].items.reduce((sum, it, i) => i === index ? sum : sum + (it.price || 0), 0);
+        
+        if (base > 0 && (currentSumExceptThis + p) > base) {
+            alert(`배정금액 합계(${currentSumExceptThis + p})가 최저가(${base})를 초과할 수 없습니다.`);
+            renderAlloTable();
+            return;
+        }
+
         ALLO_MAPPING[cat].items[index].price = p;
         if (base > 0) {
-            ALLO_MAPPING[cat].items[index].rate = (p / base) * 100;
+            ALLO_MAPPING[cat].items[index].rate = (p / base) * 100; // 계산은 정확히 하고 렌더링 시 반올림
         }
         renderAlloTable();
     }
