@@ -160,20 +160,44 @@
         const unclassifiedItems = [];
         const classifiedItems = [];
 
+        // 데이터 정제: 중복 제거 및 공백 정리
+        const uniqueMapping = [];
+        const seenKeywords = new Set();
+        MASTER_MAPPING.forEach(m => {
+            const kw = m.keyword.trim();
+            if (!seenKeywords.has(kw)) {
+                uniqueMapping.push({ ...m, keyword: kw });
+                seenKeywords.add(kw);
+            }
+        });
+        if (uniqueMapping.length !== MASTER_MAPPING.length) {
+            MASTER_MAPPING = uniqueMapping;
+            saveMapping();
+        }
+
         MASTER_MAPPING.forEach((m, index) => {
             const item = { ...m, originalIndex: index };
             if (m.result === '미분류') unclassifiedItems.push(item);
             else classifiedItems.push(item);
         });
 
-        // 1. 미분류 섹션 렌더링 (그룹화 적용)
+        // 스마트 그룹 키 생성 함수 (최소 8자 또는 첫 단어 기준)
+        const getGroupKey = (str) => {
+            const trimmed = str.trim();
+            if (trimmed.length < 8) return trimmed;
+            // 8글자 또는 공백/특수문자 이전까지의 의미 있는 단위 추출
+            const match = trimmed.match(/^.{8,12}/); 
+            return match ? match[0] : trimmed.substring(0, 8);
+        };
+
+        // 1. 미분류 섹션 렌더링 (더 타이트한 그룹화)
         if (unclassifiedItems.length > 0) {
             unclassifiedSection.classList.remove('hidden');
             unclassifiedCountSpan.innerText = unclassifiedItems.length;
             
             const unclassifiedGroups = {};
             unclassifiedItems.forEach(it => {
-                const prefix = it.keyword.substring(0, 5);
+                const prefix = getGroupKey(it.keyword);
                 if (!unclassifiedGroups[prefix]) unclassifiedGroups[prefix] = [];
                 unclassifiedGroups[prefix].push(it);
             });
@@ -184,8 +208,8 @@
                 if (items.length > 1) {
                     unclassifiedHtml += `
                         <tr style="background-color: #fff5f5; font-weight: bold; border-left: 4px solid var(--danger);">
-                            <td colspan="1">📦 [그룹] "${prefix}..." 외 ${items.length}건</td>
-                            <td><input type="text" class="input-inline" value="" onchange="updateGroupResult('${prefix}', this.value)" placeholder="이 그룹 전체를 한꺼번에 분류 등록..."></td>
+                            <td colspan="1">📦 [그룹] "${prefix}..." (${items.length}건)</td>
+                            <td><input type="text" class="input-inline" value="" onchange="updateGroupResult('${prefix}', this.value)" placeholder="이 그룹 전체 일괄 등록..."></td>
                             <td style="text-align: center;"><button onclick="toggleGroup('un_${prefix}')" style="background:none; border:none; cursor:pointer;">📂</button></td>
                         </tr>
                     `;
@@ -194,7 +218,7 @@
                             unclassifiedHtml += `
                                 <tr class="unclassified" style="font-size: 0.85rem;">
                                     <td style="padding-left: 30px;">└ ${it.keyword}</td>
-                                    <td><input type="text" class="input-inline" value="" onchange="updateMappingResult(${it.originalIndex}, this.value)" placeholder="분류명 입력..."></td>
+                                    <td><input type="text" class="input-inline" value="" onchange="updateMappingResult(${it.originalIndex}, this.value)" placeholder="개별 분류명 입력..."></td>
                                     <td style="text-align: center;"><button onclick="deleteMappingRule(${it.originalIndex})" style="color:red; background:none; border:none; cursor:pointer;">&times;</button></td>
                                 </tr>
                             `;
@@ -216,28 +240,30 @@
             unclassifiedSection.classList.add('hidden');
         }
 
-        // 2. 마스터 매핑 섹션 렌더링 (기존 5글자 그룹화 로직 유지)
+        // 2. 마스터 매핑 섹션 렌더링 (결과가 다른 경우 그룹화 금지)
         const groups = {};
         classifiedItems.forEach(it => {
-            const prefix = it.keyword.substring(0, 5);
-            if (!groups[prefix]) groups[prefix] = [];
-            groups[prefix].push(it);
+            const prefix = getGroupKey(it.keyword);
+            // 키워드 앞부분 + 결과값까지 합쳐서 그룹 키로 사용 (결과가 다르면 다른 그룹)
+            const groupKey = `${prefix}_${it.result}`;
+            if (!groups[groupKey]) groups[groupKey] = [];
+            groups[groupKey].push(it);
         });
 
         let masterHtml = '';
-        Object.keys(groups).sort().forEach(prefix => {
-            const items = groups[prefix];
+        Object.keys(groups).sort().forEach(groupKey => {
+            const items = groups[groupKey];
+            const prefix = items[0].keyword.substring(0, 8); // 표시용 접두사
+            
             if (items.length > 1) {
-                const allSameResult = items.every(it => it.result === items[0].result);
-                const commonResult = allSameResult ? items[0].result : '';
                 masterHtml += `
                     <tr style="background-color: #f0f7ff; font-weight: bold; border-left: 4px solid var(--primary);">
-                        <td colspan="1">📦 [그룹] "${prefix}..." 외 ${items.length}건</td>
-                        <td><input type="text" class="input-inline" value="${commonResult}" onchange="updateGroupResult('${prefix}', this.value)" placeholder="그룹 일괄 분류 수정..."></td>
-                        <td style="text-align: center;"><button onclick="toggleGroup('${prefix}')" style="background:none; border:none; cursor:pointer;">📂</button></td>
+                        <td colspan="1">📦 [그룹] "${prefix}..." (${items.length}건)</td>
+                        <td><input type="text" class="input-inline" value="${items[0].result}" onchange="updateGroupResult('${prefix}', this.value)" placeholder="그룹 일괄 수정..."></td>
+                        <td style="text-align: center;"><button onclick="toggleGroup('${groupKey}')" style="background:none; border:none; cursor:pointer;">📂</button></td>
                     </tr>
                 `;
-                if (localStorage.getItem(`group_expand_${prefix}`) !== 'false') {
+                if (localStorage.getItem(`group_expand_${groupKey}`) !== 'false') {
                     items.forEach(it => {
                         masterHtml += `
                             <tr style="font-size: 0.85rem;">
@@ -262,17 +288,18 @@
         masterTbody.innerHTML = masterHtml || '<tr><td colspan="3" style="text-align:center; padding:20px;">등록된 마스터 매핑이 없습니다.</td></tr>';
     }
 
-    function toggleGroup(prefix) {
-        const key = `group_expand_${prefix}`;
-        const current = localStorage.getItem(key) !== 'false';
-        localStorage.setItem(key, !current);
+    function toggleGroup(key) {
+        const storageKey = `group_expand_${key}`;
+        const current = localStorage.getItem(storageKey) !== 'false';
+        localStorage.setItem(storageKey, !current);
         renderMappingTable();
     }
 
     function updateGroupResult(prefix, val) {
         const newVal = val.trim() || '미분류';
         MASTER_MAPPING.forEach(m => {
-            if (m.keyword.startsWith(prefix)) {
+            // 접두사가 일치하는 항목만 업데이트
+            if (m.keyword.trim().startsWith(prefix)) {
                 m.result = newVal;
             }
         });
