@@ -232,15 +232,15 @@
                     const rIdx = i + 4;
                     const row = sheet.getRow(rIdx);
                     const pName = getVal(r, ['상품명']) || '';
-                    const amt = parseMoney(getVal(r, ['거래금액']));
+                    const amt = parseMoney(getVal(r, ['거래금액', '결제금액']));
 
                     row.getCell(1).value = i + 1;
                     row.getCell(2).value = getVal(r, ['결제 서비스명']);
-                    row.getCell(3).value = getVal(r, ['정산일']);
+                    row.getCell(3).value = getVal(r, ['정산일', '거래일자']);
                     row.getCell(9).value = amt;
-                    row.getCell(10).value = parseMoney(getVal(r, ['결제수수료']));
-                    row.getCell(13).value = parseMoney(getVal(r, ['VAT']));
-                    row.getCell(14).value = parseMoney(getVal(r, ['정산금액']));
+                    row.getCell(10).value = parseMoney(getVal(r, ['결제수수료', '수수료', '수수료합계']));
+                    row.getCell(13).value = parseMoney(getVal(r, ['VAT', '부가세']));
+                    row.getCell(14).value = parseMoney(getVal(r, ['정산금액', '지급금액']));
                     row.getCell(15).value = getVal(r, ['카드/은행', '카드사']);
                     row.getCell(18).value = getVal(r, ['구매자']);
                     row.getCell(19).value = pName;
@@ -263,20 +263,23 @@
                     });
                 });
 
-                // X열 조건부 서식 (정확한 엑셀 서식 규칙 적용)
+                // X열 조건부 서식 (모든 규칙을 통합하여 적용)
                 const endRow = rows.length + 3;
-                uniqueRes.forEach(res => {
-                    const color = resColors[res] || { bg: 'FFFFFFFF', fg: 'FF000000' };
-                    sheet.addConditionalFormatting({
-                        ref: `X4:X${endRow}`,
-                        rules: [{
-                            type: 'cellIs', operator: 'equal', formulae: [`"${res}"`],
-                            style: { 
-                                fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: color.bg } },
-                                font: { color: { argb: color.fg }, bold: (res === '미분류') }
-                            }
-                        }]
-                    });
+                const condRules = uniqueRes.map(res => {
+                    const color = resColors[res] || { bg: 'FFFFFFFF', fg: 'FF333333' };
+                    return {
+                        type: 'cellIs',
+                        operator: 'equal',
+                        formulae: [`"${res}"`],
+                        style: { 
+                            fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: color.bg } },
+                            font: { color: { argb: color.fg }, bold: (res === '미분류') }
+                        }
+                    };
+                });
+                sheet.addConditionalFormatting({
+                    ref: `X4:X${endRow}`,
+                    rules: condRules
                 });
 
                 // 합계 행
