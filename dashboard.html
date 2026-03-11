@@ -166,17 +166,52 @@
             else classifiedItems.push(item);
         });
 
-        // 1. 미분류 섹션 렌더링
+        // 1. 미분류 섹션 렌더링 (그룹화 적용)
         if (unclassifiedItems.length > 0) {
             unclassifiedSection.classList.remove('hidden');
             unclassifiedCountSpan.innerText = unclassifiedItems.length;
-            unclassifiedTbody.innerHTML = unclassifiedItems.map(it => `
-                <tr class="unclassified">
-                    <td>${it.keyword}</td>
-                    <td><input type="text" class="input-inline" value="" onchange="updateMappingResult(${it.originalIndex}, this.value)" placeholder="분류 결과 입력 시 등록됨..."></td>
-                    <td style="text-align: center;"><button onclick="deleteMappingRule(${it.originalIndex})" style="color:red; background:none; border:none; cursor:pointer;">&times;</button></td>
-                </tr>
-            `).join('');
+            
+            const unclassifiedGroups = {};
+            unclassifiedItems.forEach(it => {
+                const prefix = it.keyword.substring(0, 5);
+                if (!unclassifiedGroups[prefix]) unclassifiedGroups[prefix] = [];
+                unclassifiedGroups[prefix].push(it);
+            });
+
+            let unclassifiedHtml = '';
+            Object.keys(unclassifiedGroups).sort().forEach(prefix => {
+                const items = unclassifiedGroups[prefix];
+                if (items.length > 1) {
+                    unclassifiedHtml += `
+                        <tr style="background-color: #fff5f5; font-weight: bold; border-left: 4px solid var(--danger);">
+                            <td colspan="1">📦 [그룹] "${prefix}..." 외 ${items.length}건</td>
+                            <td><input type="text" class="input-inline" value="" onchange="updateGroupResult('${prefix}', this.value)" placeholder="이 그룹 전체를 한꺼번에 분류 등록..."></td>
+                            <td style="text-align: center;"><button onclick="toggleGroup('un_${prefix}')" style="background:none; border:none; cursor:pointer;">📂</button></td>
+                        </tr>
+                    `;
+                    if (localStorage.getItem(`group_expand_un_${prefix}`) !== 'false') {
+                        items.forEach(it => {
+                            unclassifiedHtml += `
+                                <tr class="unclassified" style="font-size: 0.85rem;">
+                                    <td style="padding-left: 30px;">└ ${it.keyword}</td>
+                                    <td><input type="text" class="input-inline" value="" onchange="updateMappingResult(${it.originalIndex}, this.value)" placeholder="분류명 입력..."></td>
+                                    <td style="text-align: center;"><button onclick="deleteMappingRule(${it.originalIndex})" style="color:red; background:none; border:none; cursor:pointer;">&times;</button></td>
+                                </tr>
+                            `;
+                        });
+                    }
+                } else {
+                    const it = items[0];
+                    unclassifiedHtml += `
+                        <tr class="unclassified">
+                            <td>${it.keyword}</td>
+                            <td><input type="text" class="input-inline" value="" onchange="updateMappingResult(${it.originalIndex}, this.value)" placeholder="분류명 입력..."></td>
+                            <td style="text-align: center;"><button onclick="deleteMappingRule(${it.originalIndex})" style="color:red; background:none; border:none; cursor:pointer;">&times;</button></td>
+                        </tr>
+                    `;
+                }
+            });
+            unclassifiedTbody.innerHTML = unclassifiedHtml;
         } else {
             unclassifiedSection.classList.add('hidden');
         }
