@@ -13,7 +13,6 @@
         .container { max-width: 1200px; margin: 0 auto; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         
-        /* 매핑 관리 패널 */
         .mapping-panel { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 25px; margin-bottom: 30px; border-top: 5px solid var(--primary); }
         .mapping-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .mapping-table-wrapper { max-height: 350px; overflow-y: auto; border: 1px solid #e3e6f0; border-radius: 8px; }
@@ -24,11 +23,9 @@
         .input-inline { width: 100%; border: 1px solid #ddd; padding: 6px 10px; border-radius: 4px; font-family: inherit; font-size: 0.85rem; box-sizing: border-box; }
         .input-inline:focus { border-color: var(--primary); outline: none; background: #fff; }
 
-        /* 업로드 섹션 */
         .upload-area { background: white; border: 3px dashed var(--primary); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 30px; }
         .upload-area:hover { background-color: #f1f4ff; transform: translateY(-2px); }
         
-        /* 통계 및 차트 */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .stat-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 5px solid var(--primary); }
         .stat-card .value { font-size: 1.6rem; font-weight: 800; margin: 10px 0 5px; color: #2c3e50; }
@@ -117,14 +114,14 @@
     let currentRawData = null;
 
     function init() {
-        const saved = localStorage.getItem('shinan_mapping_master_v3');
+        const saved = localStorage.getItem('shinan_mapping_master_v4');
         if (saved) {
             MASTER_MAPPING = JSON.parse(saved);
         } else {
             MASTER_MAPPING = [
                 { keyword: '밀리터리', result: '밀리터리' }, { keyword: '시즌권', result: '스키시즌권' },
                 { keyword: '원데이락커', result: '장비보관소' }, { keyword: '리프트', result: '리프트' },
-                { keyword: '강습', result: '강습pkg' }, { keyword: '눈썰매', result: '눈썰매' }
+                { keyword: '강습pkg', result: '강습pkg' }, { keyword: '눈썰매', result: '눈썰매' }
             ];
             saveMapping();
         }
@@ -168,8 +165,8 @@
         }
     }
 
-    function saveMapping() { localStorage.setItem('shinan_mapping_master_v3', JSON.stringify(MASTER_MAPPING)); }
-    function resetMapping() { if (confirm('초기화하시겠습니까?')) { localStorage.removeItem('shinan_mapping_master_v3'); location.reload(); } }
+    function saveMapping() { localStorage.setItem('shinan_mapping_master_v4', JSON.stringify(MASTER_MAPPING)); }
+    function resetMapping() { if (confirm('초기화하시겠습니까?')) { localStorage.removeItem('shinan_mapping_master_v4'); location.reload(); } }
 
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
@@ -261,13 +258,16 @@
         document.getElementById('reportTitle').innerText = `📋 분석 리포트 (${Object.keys(dailyData)[0]} ~ ${Object.keys(dailyData).pop()})`;
     }
 
-    // 엑셀 가공 다운로드 (디자인/수식 원상복구)
     async function exportToProcessedFormat() {
         try {
             const workbook = new ExcelJS.Workbook();
             const rawFiltered = currentRawData.filter(r => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(r, ['MID']).toString()));
             
-            // 1. [매핑데이터] 시트
+            const palette = ['FFE2EFDA', 'FFD9E1F2', 'FFFFF2CC', 'FFFCE4D6', 'FFE1D5E7', 'FFD5E8D4', 'FFF8CECC'];
+            const resColors = { '미분류': { bg: 'FFFF0000', fg: 'FFFFFFFF' } };
+            const allResults = [...new Set(MASTER_MAPPING.map(m => m.result))];
+            allResults.forEach((res, i) => { if (!resColors[res]) resColors[res] = { bg: palette[i % palette.length], fg: 'FF333333' }; });
+
             const mapSheet = workbook.addWorksheet('매핑데이터', { views: [{ showGridLines: false }] });
             mapSheet.getCell('B2').value = '⚙️ 상품 매핑 규칙 마스터';
             mapSheet.getCell('B2').font = { size: 14, bold: true, color: { argb: 'FF4E73DF' } };
@@ -281,16 +281,12 @@
                 cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
             });
             MASTER_MAPPING.forEach((m, i) => {
-                mapSheet.getCell(`C${tHeaderRow+1+i}`).value = m.keyword;
-                mapSheet.getCell(`D${tHeaderRow+1+i}`).value = m.result;
-                ['C', 'D'].forEach(col => mapSheet.getCell(`${col}${tHeaderRow+1+i}`).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} });
+                const rIdx = tHeaderRow + 1 + i;
+                mapSheet.getCell(`C${rIdx}`).value = m.keyword;
+                mapSheet.getCell(`D${rIdx}`).value = m.result;
+                ['C', 'D'].forEach(col => mapSheet.getCell(`${col}${rIdx}`).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} });
             });
             mapSheet.getColumn('C').width = 40; mapSheet.getColumn('D').width = 30;
-
-            // 2. 날짜별 시트 생성
-            const palette = ['FFE2EFDA', 'FFD9E1F2', 'FFFFF2CC', 'FFFCE4D6', 'FFE1D5E7', 'FFD5E8D4', 'FFF8CECC'];
-            const resColors = { '미분류': { bg: 'FFFF0000', fg: 'FFFFFFFF' } };
-            [...new Set(MASTER_MAPPING.map(m => m.result))].forEach((res, i) => { if (!resColors[res]) resColors[res] = { bg: palette[i % palette.length], fg: 'FF333333' }; });
 
             const grouped = {};
             rawFiltered.forEach(row => {
@@ -305,9 +301,6 @@
                 const sheet = workbook.addWorksheet(date, { views: [{ zoomScale: 90 }], pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1 } });
                 sheet.properties.tabColor = { argb: palette[Object.keys(grouped).indexOf(date) % palette.length] };
                 sheet.columns = [{width:6},{width:15},{width:12},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:13},{width:11},{width:10,hidden:true},{width:10,hidden:true},{width:11},{width:12,hidden:true},{width:16},{width:12,hidden:true},{width:15,hidden:true},{width:11},{width:32},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:12,hidden:true},{width:16},{width:13},{width:13}];
-
-                sheet.getCell('A1').value = `■ 정산일 기준_${date}`;
-                sheet.getCell('A1').font = { size: 11, bold: true };
 
                 const headerRow = sheet.getRow(3);
                 headerRow.values = ['NO.', '결제 서비스명', '정산일', '승인일', '매입요청일', '취소일', '상 호', 'MID', '거래금액', '결제수수료', '에스크로수수료', '인증수수료', 'VAT', '정산금액', '카드사', '승인번호', '주문번호', '구매자', '상품명', '거래구분', 'TID', '상태', '원TID', '변환결과(X)', '정산금액(Y)', '수수료+VAT(Z)'];
@@ -351,15 +344,13 @@
                     });
                 });
 
-                // 조건부 서식
                 const endRow = rows.length + 3;
-                const condRules = Object.entries(resColors).map(([res, s]) => ({
+                const rules = Object.entries(resColors).map(([res, s]) => ({
                     type: 'cellIs', operator: 'equal', formulae: [`"${res}"`],
-                    style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: s.bg } }, font: { color: { argb: s.fg }, bold: (res==='미분류') } }
+                    style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: s.bg } }, font: { color: { argb: s.fg }, bold: (res==='미분류') } }
                 }));
-                sheet.addConditionalFormatting({ ref: `X4:X${endRow}`, rules: condRules });
+                sheet.addConditionalFormatting({ ref: `X4:X${endRow}`, rules });
 
-                // 합계 행
                 const tIdx = endRow + 2;
                 sheet.mergeCells(tIdx, 1, tIdx, 3);
                 sheet.getCell(tIdx, 1).value = '합계';
@@ -372,7 +363,6 @@
                     cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
                 });
 
-                // 하단 대시보드
                 const dbS = tIdx + 2;
                 const merges = [[2,3], [4,5], [6,9], [10,13], [14,17], [18,21], [22,25]];
                 const labels = ['구분', '건수', '거래금액', '결제수수료', 'VAT', '정산금액', '수수료+VAT'];
