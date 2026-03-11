@@ -170,8 +170,9 @@
 
     function init() {
         const saved = localStorage.getItem('shinan_mapping_master_v4');
-        if (saved) MASTER_MAPPING = JSON.parse(saved);
-        else {
+        if (saved && JSON.parse(saved).length > 0) {
+            MASTER_MAPPING = JSON.parse(saved);
+        } else {
             MASTER_MAPPING = [
                 { keyword: '밀리터리', result: '밀리터리' }, { keyword: '시즌권', result: '스키시즌권' },
                 { keyword: '원데이락커', result: '장비보관소' }, { keyword: '리프트', result: '리프트' },
@@ -181,13 +182,20 @@
         }
 
         const savedAllo = localStorage.getItem('shinan_allo_mapping_v3');
-        if (savedAllo) ALLO_MAPPING = JSON.parse(savedAllo);
+        if (savedAllo && Object.keys(JSON.parse(savedAllo)).length > 0) {
+            ALLO_MAPPING = JSON.parse(savedAllo);
+        } else {
+            ALLO_MAPPING = {};
+            saveAlloMapping();
+        }
 
         renderMappingTable();
         renderAlloTable();
     }
 
+    function saveMapping() { localStorage.setItem('shinan_mapping_master_v4', JSON.stringify(MASTER_MAPPING)); }
     function saveAlloMapping() { localStorage.setItem('shinan_allo_mapping_v3', JSON.stringify(ALLO_MAPPING)); }
+    function resetMapping() { if (confirm('초기화하시겠습니까?')) { localStorage.removeItem('shinan_mapping_master_v4'); location.reload(); } }
     function resetAlloMapping() { if (confirm('안분 설정을 초기화하시겠습니까?')) { localStorage.removeItem('shinan_allo_mapping_v3'); location.reload(); } }
 
     function renderAlloTable() {
