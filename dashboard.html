@@ -261,18 +261,20 @@
         const filtered = data.filter(r => ['shinanrs1m', 'shinanrs4m', 'shinanrs5m'].includes(getVal(r, ['MID']).toString()));
         let added = 0;
         const newItems = [];
+        const existingKeywords = MASTER_MAPPING.map(m => m.keyword.trim());
+
         filtered.forEach(row => {
-            const pName = getVal(row, ['상품명']) || '';
+            const pName = (getVal(row, ['상품명']) || '').trim();
             if (!pName) return;
-            let isMapped = false;
-            for (const m of MASTER_MAPPING) { if (pName.includes(m.keyword)) { isMapped = true; break; } }
-            if (!isMapped && !newItems.includes(pName)) {
+            // 부분일치가 아니라 '정확히 동일한 키워드'가 있는지 확인하여 누락 방지
+            if (!existingKeywords.includes(pName) && !newItems.includes(pName)) {
                 newItems.push(pName);
                 MASTER_MAPPING.unshift({ keyword: pName, result: '미분류' });
+                existingKeywords.push(pName);
                 added++;
             }
         });
-        if (added > 0) { saveMapping(); renderMappingTable(); alert(`${added}개의 신규 미분류 상품이 추가되었습니다.`); }
+        if (added > 0) { saveMapping(); renderMappingTable(); alert(`${added}개의 신규 상품이 추가되었습니다. 분류를 확인해주세요.`); }
     }
 
     function parseMoney(val) { return !val ? 0 : (typeof val === 'number' ? val : parseInt(val.toString().replace(/[^0-9-]/g, '')) || 0); }
@@ -290,11 +292,14 @@
         let totalGross = 0, totalNet = 0, totalFee = 0, cancelCount = 0, cancelAmt = 0;
         const dailyData = {}, payMethodData = {}, productData = {};
 
+        // 글자수가 긴 키워드부터 매칭 (우선순위 확보)
+        const sortedMapping = [...MASTER_MAPPING].sort((a, b) => b.keyword.length - a.keyword.length);
+
         filtered.forEach(r => {
             const amt = parseMoney(getVal(r, ['거래금액', '결제금액']));
             const net = parseMoney(getVal(r, ['정산금액', '지급금액']));
             const fee = parseMoney(getVal(r, ['결제수수료', '수수료', '수수료합계'])) + parseMoney(getVal(r, ['VAT', '부가세']));
-            const pName = getVal(r, ['상품명']) || '미지정';
+            const pName = (getVal(r, ['상품명']) || '미지정').trim();
             const dateVal = getVal(r, ['정산일', '거래일자']);
             let dateKey = '기타';
             const m = dateVal.toString().match(/(\d{4})[-.\/]?(0[1-9]|1[0-2])[-.\/]?(0[1-9]|[12][0-9]|3[01])/);
@@ -306,7 +311,12 @@
             payMethodData[getVal(r, ['결제 서비스명', '결제수단']) || '기타'] = (payMethodData[getVal(r, ['결제 서비스명', '결제수단']) || '기타'] || 0) + amt;
             
             let mappedCat = '미분류';
-            for (let item of MASTER_MAPPING) { if (pName.includes(item.keyword)) { mappedCat = item.result; break; } }
+            for (let item of sortedMapping) { 
+                if (pName.includes(item.keyword.trim())) { 
+                    mappedCat = item.result; 
+                    break; 
+                } 
+            }
             if (!productData[mappedCat]) productData[mappedCat] = { count: 0, amt: 0 };
             productData[mappedCat].count++; productData[mappedCat].amt += amt;
         });
@@ -384,10 +394,12 @@
                 });
 
                 const catHit = {};
+                const sortedMapping = [...MASTER_MAPPING].sort((a, b) => b.keyword.length - a.keyword.length);
+                
                 rows.forEach((r, i) => {
                     const rIdx = i + 4;
                     const row = sheet.getRow(rIdx);
-                    const pName = getVal(r, ['상품명']) || '';
+                    const pName = (getVal(r, ['상품명']) || '').trim();
                     const amt = parseMoney(getVal(r, ['거래금액', '결제금액']));
                     row.getCell(1).value = i + 1;
                     row.getCell(2).value = getVal(r, ['결제 서비스명', '결제수단']);
@@ -404,7 +416,12 @@
                     row.getCell(26).value = { formula: `J${rIdx}+M${rIdx}` };
 
                     let m = '미분류';
-                    for(let item of MASTER_MAPPING) { if (pName.includes(item.keyword)) { m = item.result; break; } }
+                    for(let item of sortedMapping) { 
+                        if (pName.includes(item.keyword.trim())) { 
+                            m = item.result; 
+                            break; 
+                        } 
+                    }
                     catHit[m] = true;
 
                     row.eachCell({ includeEmpty: false }, (cell, col) => {
