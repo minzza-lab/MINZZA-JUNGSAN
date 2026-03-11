@@ -535,6 +535,107 @@
         document.getElementById('reportTitle').innerText = `📋 분석 리포트 (${Object.keys(dailyData)[0]} ~ ${Object.keys(dailyData).pop()})`;
     }
 
+    // 엑셀로 설정 내보내기
+    async function exportConfigToExcel() {
+        try {
+            const workbook = new ExcelJS.Workbook();
+            
+            // 1. 마스터 매핑 시트
+            const mapSheet = workbook.addWorksheet('매핑설정');
+            mapSheet.columns = [
+                { header: '키워드(상품명에 포함된 단어)', key: 'keyword', width: 40 },
+                { header: '분류결과(바꿀이름)', key: 'result', width: 30 }
+            ];
+            MASTER_MAPPING.forEach(m => mapSheet.addRow({ keyword: m.keyword, result: m.result }));
+
+            // 2. 알로 안분 설정 시트
+            const alloSheet = workbook.addWorksheet('알로안분');
+            const alloCols = [
+                { header: '상품분류', key: 'category', width: 20 },
+                { header: '최저가(기준)', key: 'basePrice', width: 15 }
+            ];
+            for(let i=1; i<=6; i++) {
+                alloCols.push({ header: `업장${i}`, key: `t${i}`, width: 15 });
+                alloCols.push({ header: `금액${i}`, key: `p${i}`, width: 12 });
+            }
+            alloSheet.columns = alloCols;
+
+            Object.entries(ALLO_MAPPING).forEach(([cat, data]) => {
+                const row = { category: cat, basePrice: data.basePrice };
+                data.items.forEach((it, i) => {
+                    row[`t${i+1}`] = it.target;
+                    row[`p${i+1}`] = it.price;
+                });
+                alloSheet.addRow(row);
+            });
+
+            [mapSheet, alloSheet].forEach(s => {
+                s.getRow(1).font = { bold: true };
+                s.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
+            });
+
+            const buf = await workbook.xlsx.writeBuffer();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(new Blob([buf]));
+            link.download = `정산시스템_마스터설정_${new Date().toISOString().slice(0,10)}.xlsx`;
+            link.click();
+        } catch (err) { alert('내보내기 오류: ' + err.message); }
+    }
+
+    // 엑셀에서 설정 가져오기
+    function importConfigFromExcel(input) {
+        if (!input.files || !input.files[0]) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const workbook = new ExcelJS.Workbook();
+                await workbook.xlsx.load(e.target.result);
+                
+                const newMaster = [];
+                const mapSheet = workbook.getWorksheet('매핑설정');
+                if (mapSheet) {
+                    mapSheet.eachRow((row, i) => {
+                        if (i === 1) return;
+                        const kw = row.getCell(1).text.trim();
+                        const rs = row.getCell(2).text.trim();
+                        if (kw) newMaster.push({ keyword: kw, result: rs || '미분류' });
+                    });
+                }
+
+                const newAllo = {};
+                const alloSheet = workbook.getWorksheet('알로안분');
+                if (alloSheet) {
+                    alloSheet.eachRow((row, i) => {
+                        if (i === 1) return;
+                        const cat = row.getCell(1).text.trim();
+                        if (!cat) return;
+                        const base = parseFloat(row.getCell(2).value) || 0;
+                        const items = [];
+                        for(let j=0; j<6; j++) {
+                            const t = row.getCell(3 + j*2).text.trim();
+                            const p = parseFloat(row.getCell(4 + j*2).value) || 0;
+                            const rate = base > 0 ? (p / base) * 100 : 0;
+                            items.push({ target: t, price: p, rate: rate });
+                        }
+                        newAllo[cat] = { basePrice: base, items: items };
+                    });
+                }
+
+                if (confirm(`매핑 규칙 ${newMaster.length}건, 안분 설정 ${Object.keys(newAllo).length}건을 불러오시겠습니까?\n기존 설정은 덮어씌워집니다.`)) {
+                    MASTER_MAPPING = newMaster;
+                    ALLO_MAPPING = newAllo;
+                    saveMapping();
+                    saveAlloMapping();
+                    renderMappingTable();
+                    renderAlloTable();
+                    alert('설정이 성공적으로 업데이트되었습니다.');
+                }
+            } catch (err) { alert('가져오기 오류: 파일 형식을 확인해주세요. ' + err.message); }
+            input.value = '';
+        };
+        reader.readAsArrayBuffer(input.files[0]);
+    }
+
     async function exportToProcessedFormat() {
         try {
             const workbook = new ExcelJS.Workbook();
