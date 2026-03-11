@@ -109,6 +109,36 @@
         </div>
     </div>
 
+    <!-- 알로 안분율 관리 패널 추가 -->
+    <div class="mapping-panel" style="border-top-color: var(--info); margin-top: 20px;">
+        <div class="mapping-header">
+            <h2 style="margin:0; font-size: 1.2rem; color: #2c3e50;">🧩 알로 수수료 안분 관리</h2>
+            <button class="btn-small" onclick="resetAlloMapping()" style="color: var(--danger);">🗑️ 안분 초기화</button>
+        </div>
+        <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">※ 매핑된 '최종 분류 결과'를 기준으로 업장별 수수료 안분율을 설정합니다.</p>
+        
+        <div class="mapping-table-wrapper">
+            <table class="mapping-table">
+                <thead>
+                    <tr style="background: #f0faff;">
+                        <th>상품 분류 (Master)</th>
+                        <th>안분 대상 업장</th>
+                        <th>안분율 (%)</th>
+                        <th style="width: 50px; text-align: center;">삭제</th>
+                    </tr>
+                </thead>
+                <tbody id="alloTableBody"></tbody>
+            </table>
+        </div>
+        
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+            <select id="alloCategorySelect" class="input-inline" style="flex: 1.5;"></select>
+            <input type="text" id="alloTarget" class="input-inline" style="flex: 1.5;" placeholder="안분 업장 (예: 리프트)...">
+            <input type="number" id="alloRate" class="input-inline" style="flex: 1;" placeholder="안분율 (%)" min="0" max="100">
+            <button class="btn-small" style="background: var(--info); color: white; border: none; padding: 0 20px;" onclick="addAlloRule()">안분 규칙 추가</button>
+        </div>
+    </div>
+
     <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
         <div style="font-size: 3rem;">📥</div>
         <h3>정산 로우데이터 파일을 이곳에 끌어다 놓으세요</h3>
